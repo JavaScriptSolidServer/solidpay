@@ -266,7 +266,7 @@ export function createNode({ dataDir = './data', publicUrl = null, trustProxy = 
     try {
       // ---- app UI + profile URIs ----
       if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
-        return send(res, 200, uiPage(), 'text/html; charset=utf-8');
+        return send(res, 200, uiPage(origin), 'text/html; charset=utf-8');
       }
       if (req.method === 'GET' && p === '/xlogin.js') {
         return send(res, 200, xloginSrc, 'application/javascript; charset=utf-8');

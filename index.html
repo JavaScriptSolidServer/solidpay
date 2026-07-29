@@ -128,7 +128,7 @@ footer a{color:var(--soft)}
   every transition is hash-chained, and signatures come from keys you hold.
   No blockchain. No token. No bank in the middle.</p>
   <div class="cta">
-    <a class="btn primary" href="http://melvin.me:3480/">Try the testnet</a>
+    <a class="btn primary" href="https://solidpay.melvin.me/">Try the testnet</a>
     <a class="btn ghost" href="https://github.com/JavaScriptSolidServer/solidpay#quickstart">Run a node</a>
     <a class="btn ghost" href="docs/spec/">Read the spec</a>
   </div>
@@ -208,8 +208,8 @@ cd solidpay
 node server.js
 <span class="g">solidpay node listening on port 3480</span>
 
-<span class="c"># production, behind a proxy</span>
-PUBLIC_URL=https://testnet.solidpay.org node server.js</pre></div>
+<span class="c"># behind a reverse proxy (the solidpay.&lt;domain&gt; convention)</span>
+PUBLIC_URL=https://solidpay.yourdomain TRUST_PROXY=1 HOST=127.0.0.1 node server.js</pre></div>
     <ol class="steps">
       <li><div><b>Create an account</b><p>Open the app, pick a name — you are now
         <code>…/u/you#me</code>, a URI that dereferences.</p></div></li>
@@ -226,7 +226,7 @@ PUBLIC_URL=https://testnet.solidpay.org node server.js</pre></div>
   <h2>Testnet first, then the hard parts</h2>
   <ul class="road">
     <li><span class="v">v0</span><div><b>Standalone testnet node<span class="now">now</span></b>
-      <p>Trustlines, routed payments, settle, hash-chained ledger, product UI, URIs for users, nostr sign-in. <a href="http://melvin.me:3480/">Live testnet</a> — play money, real protocol.</p></div></li>
+      <p>Trustlines, routed payments, settle, hash-chained ledger, product UI, URIs for users, nostr sign-in. Live nodes: <a href="https://solidpay.melvin.me/">solidpay.melvin.me</a> · <a href="https://solidpay.melvincarvalho.com/">solidpay.melvincarvalho.com</a> · <a href="https://solidpay.nostr.social/">solidpay.nostr.social</a> — the <code>solidpay.</code> subdomain convention.</p></div></li>
     <li><span class="v">v1</span><div><b>did:nostr signatures<span class="now">live</span></b>
       <p>Shipped: schnorr-signed transitions as nostr events (kinds 8801–8804) — the ledger is
       verify-don't-trust, and <a href="docs/spec/#signatures">spec §9</a> is normative. Remaining in
