@@ -188,10 +188,11 @@ footer a{color:var(--soft)}
       nostr key (extension or xlogin), <code>POST /api/tx</code>, done. The node verifies, never
       attributes: authorship is provable by anyone replaying the log. The server is a coordinator,
       not an authority — verify, don't trust.</p></div>
-    <div class="card"><h3><span class="ic">⇄</span>A network of nodes <small style="color:var(--warn);font-weight:600">v2</small></h3>
-      <p>Signed transitions make federation possible: routes that cross nodes, relayed and verified
-      anywhere — the part that was genuinely hard in 2004. Chain tips can anchor to Bitcoin via
-      <a href="https://blocktrails.org">Blocktrails</a> for public timestamps.</p></div>
+    <div class="card"><h3><span class="ic">⇄</span>A network of nodes</h3>
+      <p><strong>Two nodes live.</strong> Cross-node payments flow through did:nostr gateway agents —
+      signatures are the only coordination — and both nodes' audited tips are anchored to Bitcoin
+      testnet4 on a <a href="https://blocktrails.org">Blocktrails</a> trail. Atomic routes
+      (hold/commit) are the next protocol level.</p></div>
   </div>
 </div></section>
 
@@ -230,10 +231,13 @@ PUBLIC_URL=https://testnet.solidpay.org node server.js</pre></div>
       <p>Shipped: schnorr-signed transitions as nostr events (kinds 8801–8804) — the ledger is
       verify-don't-trust, and <a href="docs/spec/#signatures">spec §9</a> is normative. Remaining in
       v1: per-agent privacy views, WebID agents, custody export.</p></div></li>
-    <li><span class="v">v2</span><div><b>Federation</b>
-      <p>Cross-node routing over signed transitions — hold/commit or relay gossip. Multiple testnets, then peering.</p></div></li>
-    <li><span class="v">v3</span><div><b>Anchoring &amp; beyond</b>
-      <p>Chain tips anchored to Bitcoin (Blocktrails), pod-delivered statements, agent participants.</p></div></li>
+    <li><span class="v">v2</span><div><b>Federation<span class="now">first light</span></b>
+      <p>Two live nodes; cross-node payments through did:nostr gateways — demonstrated on the open
+      internet (<a href="docs/spec/#federation">spec §13</a>). Next: atomic routes (hold/commit).</p></div></li>
+    <li><span class="v">v3</span><div><b>Anchoring<span class="now">live</span></b>
+      <p>Both nodes' audited tips anchored to Bitcoin testnet4 on a
+      <a href="https://blocktrails.org">Blocktrails</a> federation trail —
+      chained P2TR marks, served at <code>/api/anchors</code>.</p></div></li>
   </ul>
 </div></section>
 

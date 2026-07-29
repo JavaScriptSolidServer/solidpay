@@ -145,6 +145,7 @@ implementation</a> passes the <a href="#vectors">test vectors in Appendix&nbsp;A
 <li><a href="#http"><span class="n">10</span>HTTP API</a></li>
 <li><a href="#security"><span class="n">11</span>Security considerations</a></li>
 <li><a href="#privacy"><span class="n">12</span>Privacy considerations</a></li>
+<li><a href="#federation"><span class="n">13</span>Federation (draft)</a></li>
 <li><a href="#vectors"><span class="n">A</span>Test vectors</a></li>
 <li><a href="#references"><span class="n">B</span>References</a></li>
 </ol></nav>
@@ -563,6 +564,59 @@ is a level-1 design goal; deployments handling real obligations <span class="rfc
 expose the full graph publicly. Usernames are public by construction (they are URIs); agents who
 need unlinkability <span class="rfc">should</span> use pseudonymous names or DIDs.</p>
 
+<h2 id="federation"><span class="secno">13.</span>Federation
+<span class="pill" style="vertical-align:middle;margin-left:8px">Draft</span><a class="self" href="#federation">§</a></h2>
+<h3 id="fed-model"><span class="secno">13.1</span>Model — sovereign nodes, global agents<a class="self" href="#fed-model">§</a></h3>
+<p>Nodes are sovereign: each holds its own ledger and answers for its own history. Agents are
+global: an identity is a URI or DID, so the same agent can hold trustlines on many nodes at once.
+A trustline (and its balance) lives on exactly <em>one</em> node — the node both parties accepted
+when the line was created. There is no global state and no consensus between nodes; there are only
+per-node ledgers whose entries are signed by their actors (§&nbsp;9) and anchored histories that
+make lying provable (§&nbsp;13.3).</p>
+<h3 id="fed-gateway"><span class="secno">13.2</span>The gateway pattern (implemented)<a class="self" href="#fed-gateway">§</a></h3>
+<p>Cross-node value transfer composes from per-node payments through a <dfn>gateway</dfn> — an
+agent with credit relationships on both nodes. For alice@A → carol@B via gateway G:</p>
+<ol class="algo">
+<li>G holds (or creates, with one signed transition to each node) trust relationships:
+G→alice on A, carol→G on B.</li>
+<li>alice pays G on node A — consuming credit G already granted.</li>
+<li>G pays carol on node B — consuming credit carol already granted.</li>
+</ol>
+<p>Net: value crossed nodes; G's books balance across them (+x owed to it on A, −x owed by it on
+B). The gateway's signatures are the <em>only</em> coordination — no node-to-node protocol is
+required, which is why this level ships already (the repository's
+<code>tools/xnode-demo.js</code> runs it against two live nodes). The honest caveat: steps 2 and 3
+are <em>not atomic</em>; between them the gateway bears the risk, which is precisely a gateway's
+business (and Fugger's original inter-server design assumption).</p>
+<h3 id="fed-atomic"><span class="secno">13.3</span>Toward atomic routes (level 2, unimplemented)<a class="self" href="#fed-atomic">§</a></h3>
+<p>Removing the gateway's window of risk needs conditional transitions: a
+<code>hold</code> reserving capacity on each leg with a TTL, released by a <code>commit</code>
+carrying a hashlock preimage (HTLC-shaped), else unwound at expiry. Known dragon, named here so it
+is not rediscovered: holds lock capacity, so hold-griefing and liquidity-lockup are real costs —
+the reason Interledger moved to packetized amounts. Level 2 will specify hold/commit transitions
+as two further signed event kinds; nothing in the level-1 data model changes.</p>
+<h3 id="fed-anchor"><span class="secno">13.4</span>Settlement assurance — anchoring (implemented)<a class="self" href="#fed-anchor">§</a></h3>
+<p>Because state is a pure function of the log (§&nbsp;8.2), the only lie available to a node is
+presenting <em>different histories to different parties</em>. Anchoring makes that refutable. The
+interface is deliberately pluggable:</p>
+<pre><code>anchor(state) → proof          <span class="c">// commit to a state externally</span>
+verify(proof) → attested time  <span class="c">// check a commitment</span>
+resolve(histA, histB) → …      <span class="c">// which history was committed to, when</span></code></pre>
+<p>The first backend is <strong>Blocktrails</strong> [<a href="#ref-blocktrails">BLOCKTRAILS</a>]
+(implemented; <code>tools/anchor.js</code>): the anchored state is the string
+<code>{"node":"&lt;origin&gt;","seq":n,"tip":"sha256:…"}</code> (literal key order); each anchor
+tweaks the trail key by the state hash (chained BIP-341 TapTweak) yielding a fresh P2TR address,
+and the mark transaction pays the trail's balance forward to it. The chain of spends <em>is</em>
+the anchor history — ordered and timestamped by Bitcoin. One trail <span class="rfc">may</span>
+carry many nodes' tips (a <dfn>federation trail</dfn>); the state names the node. A node
+<span class="rfc">must not</span> anchor a tip whose own audit fails. Anchors are served read-only
+at <code>GET /api/anchors</code>. Dispute rule: a history whose (seq, tip) was anchored at
+Bitcoin-attested time T refutes any competing history presented later that diverges before T —
+the node is caught by its own commitment.</p>
+<div class="note"><span class="lbl">Note</span><p>This is not consensus, on purpose. The network
+keeps no global state to agree on; anchoring makes each node's <em>own</em> statements
+progressively harder to retract. Trust stays bilateral; evidence becomes public.</p></div>
+
 <h2 id="vectors"><span class="secno">A.</span>Test vectors<a class="self" href="#vectors">§</a></h2>
 <p>An implementation is expected to reproduce these values exactly. Agents:
 <code>A = https://n.example/u/alice#me</code>, <code>B = …/u/bob#me</code>,
@@ -637,8 +691,9 @@ Basic protocol flow description</a></li>
 HTTP Auth</a></li>
 <li>[TRUSTLINE-V1] — <a href="https://github.com/webcontracts/webcontracts.github.io/issues/4">trustline.v1
 profile — Ryan Fugger's original Ripple as a web contract</a></li>
-<li>[BLOCKTRAILS] — <a href="https://blocktrails.org">Blocktrails: Bitcoin-anchored history</a>
-<em>(anchoring, level 3)</em></li>
+<li id="ref-blocktrails">[BLOCKTRAILS] — <a href="https://blocktrails.org">Blocktrails: Bitcoin-anchored
+history</a> — reference implementation <a href="https://www.npmjs.com/package/blocktrails">npm
+<code>blocktrails</code></a></li>
 </ul>
 
 <footer>

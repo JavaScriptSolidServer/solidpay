@@ -30,14 +30,18 @@
 
 ## v2 — federation
 
-- [ ] Node-to-node peering: cross-node trustlines and routed payments
-      (two-phase hold/commit; evaluate hashlocks à la LN)
+- [x] TWO public testnet nodes (melvin.me:3480 + melvincarvalho.com:3480)
+- [x] Gateway-pattern cross-node payments (spec §13.2, tools/xnode-demo.js):
+      alice@A → carol@B through a did:nostr gateway — signatures are the
+      only coordination; demonstrated live between the two nodes
+- [ ] Atomic routes: hold/commit transitions with TTL + hashlocks (spec §13.3)
 - [ ] Signed transitions as nostr events over relays (discovery + transport)
-- [ ] Multiple public testnets, then peering between them
 
 ## v3 — anchoring & beyond
 
-- [ ] Anchor chain tips to Bitcoin via Blocktrails (public timestamps)
+- [x] Anchor chain tips to Bitcoin via Blocktrails (spec §13.4,
+      tools/anchor.js + GET /api/anchors) — LIVE on testnet4: a federation
+      trail carrying both nodes' audited tips as chained P2TR marks
 - [ ] Pod-delivered statements (Solid pods as citizen-controlled copies,
       the recordweb pattern)
 - [ ] Agents as participants (autonomous trust management, routing fees?)
