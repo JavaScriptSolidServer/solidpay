@@ -1,0 +1,25 @@
+{
+  "name": "@solidpay/node",
+  "version": "0.1.0",
+  "description": "SolidPay — Ryan Fugger's original Ripple with Solid ideas: every user is a URI, every transition hash-chained, signatures via did:nostr. A trust-money node in one file, zero dependencies.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Melvin Carvalho <melvincarvalho@gmail.com> (https://melvincarvalho.com/#me)",
+  "homepage": "https://javascriptsolidserver.github.io/solidpay/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JavaScriptSolidServer/solidpay.git"
+  },
+  "main": "lib/engine.js",
+  "exports": {
+    ".": "./lib/engine.js",
+    "./server": "./server.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test --test-concurrency=1 'test/*.test.js'"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

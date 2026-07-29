@@ -1,0 +1,227 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SolidPay — money is trust</title>
+<meta name="description" content="SolidPay revives Ryan Fugger's original Ripple (2004) with Solid ideas: every user is a URI, every transition is hash-chained, signatures via did:nostr. No blockchain, no token — bilateral credit and routed payments over a web of trust.">
+<style>
+:root{
+  --bg:#EFF3F2; --surface:#FFFFFF; --surface2:#F7FAF9; --ink:#16211F;
+  --soft:#5A6B67; --faint:#8CA09B; --line:#D6DEDB;
+  --acc:#0E7D6C; --acc-ink:#0A5F52; --acc-soft:#DDEEEA;
+  --warn:#9A6417;
+  --shadow:0 1px 2px rgba(22,33,31,.05),0 10px 30px rgba(22,33,31,.07);
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0D1413; --surface:#131B1A; --surface2:#182221; --ink:#E5ECEA;
+  --soft:#8FA19C; --faint:#5F726D; --line:#263230;
+  --acc:#3FB59F; --acc-ink:#7BD2C1; --acc-soft:#12302A;
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 12px 32px rgba(0,0,0,.4);
+}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--acc)}
+.wrap{max-width:960px;margin:0 auto;padding:0 22px}
+header{padding:14px 0;border-bottom:1px solid var(--line)}
+header .wrap{display:flex;align-items:center;gap:14px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:17px;color:var(--ink);text-decoration:none}
+header nav{margin-left:auto;display:flex;gap:18px;font-size:14.5px}
+header nav a{color:var(--soft);text-decoration:none;font-weight:550}
+header nav a:hover{color:var(--acc)}
+
+.hero{padding:76px 0 60px;text-align:center}
+.hero .arcs{margin:0 auto 26px;display:block}
+h1{font-size:clamp(34px,6vw,54px);line-height:1.06;letter-spacing:-.025em;margin:0 0 18px;text-wrap:balance}
+.hero p.sub{font-size:19px;color:var(--soft);max-width:44rem;margin:0 auto 30px;text-wrap:balance}
+.cta{display:inline-flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.btn{display:inline-block;padding:12px 22px;border-radius:10px;font-weight:600;font-size:15.5px;text-decoration:none;border:1px solid var(--line)}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.ghost{color:var(--acc);background:var(--surface)}
+.btn.ghost:hover{border-color:var(--acc)}
+.lineage{margin-top:26px;font-size:13.5px;color:var(--faint)}
+
+.demo{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);max-width:660px;margin:0 auto;padding:26px;text-align:left}
+.demo .cap{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:14px}
+.chain{display:flex;align-items:center;flex-wrap:wrap;gap:8px;justify-content:center;padding:8px 0 2px}
+.nodechip{display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--line);border-radius:99px;padding:6px 15px 6px 7px;font-weight:600;font-size:14.5px}
+.dot{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:11.5px;font-weight:700}
+.arrow{color:var(--acc);font-weight:700;animation:flow 1.8s ease infinite}
+@keyframes flow{0%,100%{opacity:.3}50%{opacity:1}}
+.demo .note{text-align:center;font-size:13.5px;color:var(--soft);margin-top:14px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+
+section{padding:54px 0;border-top:1px solid var(--line)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--acc);margin:0 0 10px}
+h2{font-size:26px;letter-spacing:-.02em;margin:0 0 12px;text-wrap:balance}
+p.lead{color:var(--soft);max-width:46rem;margin:0 0 26px}
+.cards{display:grid;gap:16px}
+@media(min-width:760px){.cards.c3{grid-template-columns:repeat(3,1fr)}.cards.c2{grid-template-columns:1fr 1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:20px}
+.card h3{margin:0 0 8px;font-size:16px;display:flex;align-items:center;gap:9px}
+.card p{margin:0;font-size:14.5px;color:var(--soft)}
+.card .ic{width:28px;height:28px;border-radius:8px;background:var(--acc-soft);color:var(--acc-ink);display:grid;place-items:center;font-size:14px;flex:0 0 auto}
+pre{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto;font:13px/1.6 var(--mono);color:var(--ink);margin:0}
+pre .c{color:var(--faint)} pre .g{color:var(--acc-ink)}
+.steps{counter-reset:s;display:grid;gap:14px;margin:0;padding:0;list-style:none}
+.steps li{display:flex;gap:14px;align-items:flex-start}
+.steps li::before{counter-increment:s;content:counter(s);flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:var(--acc-soft);color:var(--acc-ink);display:grid;place-items:center;font:600 13px var(--mono)}
+.steps b{display:block;margin-bottom:2px}
+.steps p{margin:0;font-size:14.5px;color:var(--soft)}
+.road{display:grid;gap:0;margin:0;padding:0;list-style:none}
+.road li{display:flex;gap:16px;padding:14px 0;border-bottom:1px dashed var(--line);align-items:baseline}
+.road li:last-child{border-bottom:0}
+.road .v{font:700 13px var(--mono);color:var(--acc-ink);flex:0 0 3.2rem}
+.road b{font-size:15px}
+.road p{margin:2px 0 0;font-size:14px;color:var(--soft)}
+.road .now{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--acc-soft);color:var(--acc-ink);border-radius:99px;padding:2px 9px;margin-left:8px}
+footer{border-top:1px solid var(--line);padding:34px 0 60px;font-size:14px;color:var(--faint)}
+footer .wrap{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline}
+footer a{color:var(--soft)}
+</style></head><body>
+
+<header><div class="wrap">
+  <a class="brand" href="#">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="9" cy="12" r="3.1" stroke="var(--acc)" stroke-width="2"/>
+      <path d="M14.5 7.5a6.4 6.4 0 0 1 0 9" stroke="var(--acc)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M17.8 5a10.4 10.4 0 0 1 0 14" stroke="var(--acc)" stroke-width="2" stroke-linecap="round" opacity=".45"/>
+    </svg>
+    SolidPay
+  </a>
+  <nav>
+    <a href="#how">How it works</a>
+    <a href="#stack">The stack</a>
+    <a href="#run">Run a node</a>
+    <a href="docs/spec.md">Spec</a>
+    <a href="https://github.com/JavaScriptSolidServer/solidpay">GitHub</a>
+  </nav>
+</div></header>
+
+<div class="hero"><div class="wrap">
+  <svg class="arcs" width="64" height="64" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <circle cx="9" cy="12" r="3.1" stroke="var(--acc)" stroke-width="1.6"/>
+    <path d="M14.5 7.5a6.4 6.4 0 0 1 0 9" stroke="var(--acc)" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M17.8 5a10.4 10.4 0 0 1 0 14" stroke="var(--acc)" stroke-width="1.6" stroke-linecap="round" opacity=".5"/>
+    <path d="M20.9 2.6a14.6 14.6 0 0 1 0 18.8" stroke="var(--acc)" stroke-width="1.6" stroke-linecap="round" opacity=".25"/>
+  </svg>
+  <h1>Money is trust.<br>SolidPay makes it routable.</h1>
+  <p class="sub">The original Ripple — Ryan Fugger, 2004 — rebuilt with Solid ideas.
+  Extend credit to people you trust; pay anyone your network can reach. Every user is a URI,
+  every transition is hash-chained, and signatures come from keys you hold.
+  No blockchain. No token. No bank in the middle.</p>
+  <div class="cta">
+    <a class="btn primary" href="https://github.com/JavaScriptSolidServer/solidpay#quickstart">Run a node</a>
+    <a class="btn ghost" href="docs/spec.md">Read the spec</a>
+  </div>
+  <div style="margin-top:44px">
+    <div class="demo">
+      <div class="cap">A payment, routed through trust</div>
+      <div class="chain">
+        <span class="nodechip"><span class="dot" style="background:hsl(210 42% 46%)">A</span>alice</span>
+        <span class="arrow">→</span>
+        <span class="nodechip"><span class="dot" style="background:hsl(96 42% 40%)">B</span>bob</span>
+        <span class="arrow">→</span>
+        <span class="nodechip"><span class="dot" style="background:hsl(275 42% 50%)">C</span>carol</span>
+      </div>
+      <div class="note">Bob trusts alice for 1,000. Carol trusts bob for 500.
+      So alice can pay carol 300 <em>through</em> bob — using only credit already granted.
+      Nobody mid-path approves anything; that's the whole trick.</div>
+    </div>
+  </div>
+  <div class="lineage">solidpay.org · an idea from 2018, an engine from 2026 · grown out of the
+  <a href="https://github.com/JavaScriptSolidServer/plugins">JSS plugin experiment</a> and
+  <a href="https://github.com/webcontracts/webcontracts.github.io/issues/4">trustline.v1</a></div>
+</div></div>
+
+<section id="how"><div class="wrap">
+  <p class="eyebrow">How it works</p>
+  <h2>Three verbs, one graph</h2>
+  <p class="lead">Fugger's 2004 insight: trust relationships between people <em>are</em> the payment network.
+  SolidPay keeps the model exactly that small.</p>
+  <div class="cards c3">
+    <div class="card"><h3><span class="ic">+</span>Extend trust</h3>
+      <p>A trustline is one-way credit: "you may owe me up to 500 USD." Only the creditor creates,
+      resizes, or removes it — it's their risk, nobody else's signature required.</p></div>
+    <div class="card"><h3><span class="ic">→</span>Pay through it</h3>
+      <p>Payments route hop-by-hop through unused credit. Every hop rides a grant its next node already
+      made, so intermediaries need no per-payment consent. Owed-to-you credit spends with no line at all —
+      paying back clears debt first.</p></div>
+    <div class="card"><h3><span class="ic">✓</span>Settle outside</h3>
+      <p>IOUs clear out-of-band — cash, sats, a favour returned. The creditor records repayment, and only
+      a claim you hold can shrink. Books are one signed number per pair: they cannot desync.</p></div>
+  </div>
+</div></section>
+
+<section id="stack"><div class="wrap">
+  <p class="eyebrow">The Solid ideas</p>
+  <h2>What 2004 didn't have</h2>
+  <div class="cards c2">
+    <div class="card"><h3><span class="ic">⌾</span>Every user is a URI</h3>
+      <p>Your identity is an address, not a row in someone's database: a WebID, a
+      <code>did:nostr</code>, or this node's own <code>/u/name#me</code> — which dereferences to a real
+      profile document. One agent, one canonical spelling, globally linkable.</p></div>
+    <div class="card"><h3><span class="ic">⛓</span>A ledger that proves itself</h3>
+      <p>Every transition is hash-chained — <code>seq</code>, <code>prev</code>, SHA-256 over the
+      RFC 8785-canonical entry. Anyone can re-derive the whole chain from
+      <code>/api/log</code>; the UI shows the verification badge live.</p></div>
+    <div class="card"><h3><span class="ic">✎</span>Signatures, not sessions <small style="color:var(--warn);font-weight:600">v1</small></h3>
+      <p>Next: each transition schnorr-signed by the actor's <code>did:nostr</code> key over the same
+      canonical bytes. The server drops from authority to coordinator — verify, don't trust. A signed
+      transition is shaped like a nostr event, on purpose.</p></div>
+    <div class="card"><h3><span class="ic">⇄</span>A network of nodes <small style="color:var(--warn);font-weight:600">v2</small></h3>
+      <p>Signed transitions make federation possible: routes that cross nodes, relayed and verified
+      anywhere — the part that was genuinely hard in 2004. Chain tips can anchor to Bitcoin via
+      <a href="https://blocktrails.org">Blocktrails</a> for public timestamps.</p></div>
+  </div>
+</div></section>
+
+<section id="run"><div class="wrap">
+  <p class="eyebrow">Run a node</p>
+  <h2>A testnet in one file, zero dependencies</h2>
+  <p class="lead">The whole node — engine, API, product UI — is plain Node.js. Clone it, run it,
+  open the app, and start a trust network with your friends. Testnet: play money, real protocol.</p>
+  <div class="cards c2">
+    <div><pre><span class="c"># get a node running</span>
+git clone https://github.com/JavaScriptSolidServer/solidpay
+cd solidpay
+node server.js
+<span class="g">solidpay node listening on port 3480</span>
+
+<span class="c"># production, behind a proxy</span>
+PUBLIC_URL=https://testnet.solidpay.org node server.js</pre></div>
+    <ol class="steps">
+      <li><div><b>Create an account</b><p>Open the app, pick a name — you are now
+        <code>…/u/you#me</code>, a URI that dereferences.</p></div></li>
+      <li><div><b>Extend trust</b><p>Give a friend a credit limit in any currency — USD, SATS, HRS,
+        anything <code>[A-Z0-9]</code>.</p></div></li>
+      <li><div><b>Pay through the graph</b><p>Type a name and an amount; the route previews live
+        before you commit, then settles atomically.</p></div></li>
+    </ol>
+  </div>
+</div></section>
+
+<section id="roadmap"><div class="wrap">
+  <p class="eyebrow">Roadmap</p>
+  <h2>Testnet first, then the hard parts</h2>
+  <ul class="road">
+    <li><span class="v">v0</span><div><b>Standalone testnet node<span class="now">now</span></b>
+      <p>Trustlines, routed payments, settle, hash-chained ledger, product UI, URIs for users. This release.</p></div></li>
+    <li><span class="v">v1</span><div><b>did:nostr signatures</b>
+      <p>Schnorr-signed transitions; sign in with your key; the ledger becomes verify-don't-trust. Spec drafted in <a href="docs/spec.md">§7</a>.</p></div></li>
+    <li><span class="v">v2</span><div><b>Federation</b>
+      <p>Cross-node routing over signed transitions — hold/commit or relay gossip. Multiple testnets, then peering.</p></div></li>
+    <li><span class="v">v3</span><div><b>Anchoring &amp; beyond</b>
+      <p>Chain tips anchored to Bitcoin (Blocktrails), pod-delivered statements, agent participants.</p></div></li>
+  </ul>
+</div></section>
+
+<footer><div class="wrap">
+  <span>SolidPay · MIT</span>
+  <a href="https://github.com/JavaScriptSolidServer/solidpay">GitHub</a>
+  <a href="docs/spec.md">Spec</a>
+  <a href="docs/roadmap.md">Roadmap</a>
+  <a href="https://classic.ripplepay.com/">RipplePay (2004)</a>
+  <span style="margin-left:auto">an idea whose time has come back</span>
+</div></footer>
+</body></html>
