@@ -1,0 +1,565 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SolidPay Protocol 1.0</title>
+<meta name="description" content="SolidPay Protocol — normative specification. Bilateral trustlines, routed payments over a web of trust, a hash-chained transition log, and did:nostr signatures. Every user is a URI.">
+<style>
+:root{
+  --bg:#FFFFFF; --ink:#1A2321; --soft:#55645F; --faint:#8CA09B; --line:#DEE5E2;
+  --acc:#0E7D6C; --acc-ink:#0A5F52; --acc-soft:#EAF3F0;
+  --note:#EFF6F3; --note-edge:#0E7D6C;
+  --ex:#F6F8F7; --issue:#FDF3E7; --issue-edge:#9A6417;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#101615; --ink:#E5ECEA; --soft:#96A6A0; --faint:#63756F; --line:#26332F;
+  --acc:#3FB59F; --acc-ink:#7BD2C1; --acc-soft:#14302A;
+  --note:#132622; --note-edge:#3FB59F;
+  --ex:#151E1C; --issue:#2A2013; --issue-edge:#D69A4A;
+}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--acc)}
+.page{max-width:52rem;margin:0 auto;padding:0 24px 120px}
+
+.masthead{border-bottom:3px solid var(--acc);padding:42px 0 26px;margin-bottom:8px}
+.masthead .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;color:var(--soft);margin-bottom:22px}
+h1.title{font-size:clamp(28px,5vw,40px);line-height:1.1;letter-spacing:-.02em;margin:0 0 6px}
+.subtitle{font-size:18px;color:var(--soft);margin:0 0 22px}
+dl.meta{display:grid;grid-template-columns:auto 1fr;gap:4px 18px;font-size:14.5px;margin:0}
+dl.meta dt{font-weight:650;color:var(--soft)}
+dl.meta dd{margin:0}
+.pill{display:inline-block;font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;background:var(--acc-soft);color:var(--acc-ink);border-radius:99px;padding:3px 12px}
+
+h2{font-size:24px;letter-spacing:-.015em;margin:52px 0 14px;line-height:1.25}
+h3{font-size:18.5px;margin:36px 0 10px}
+h4{font-size:16px;margin:28px 0 8px}
+h2,h3,h4{scroll-margin-top:24px}
+.secno{color:var(--faint);font-weight:600;margin-right:.5em}
+a.self{float:right;color:var(--faint);text-decoration:none;font-weight:400;opacity:0;font-size:.8em;line-height:2}
+h2:hover a.self,h3:hover a.self,h4:hover a.self{opacity:1}
+p{margin:0 0 14px}
+ul,ol{margin:0 0 14px;padding-left:26px}
+li{margin-bottom:5px}
+
+nav.toc{background:var(--ex);border:1px solid var(--line);border-radius:12px;padding:20px 26px;margin:30px 0 10px}
+nav.toc .toc-h{font:600 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:10px}
+nav.toc ol{list-style:none;padding:0;margin:0;columns:2;column-gap:34px}
+@media(max-width:640px){nav.toc ol{columns:1}}
+nav.toc li{margin:0 0 6px;break-inside:avoid;font-size:14.5px}
+nav.toc a{text-decoration:none;color:var(--ink)}
+nav.toc a:hover{color:var(--acc)}
+nav.toc .n{color:var(--faint);font:600 12.5px var(--mono);margin-right:.55em}
+
+code{font:.92em var(--mono);background:var(--ex);border:1px solid var(--line);border-radius:5px;padding:.08em .35em}
+pre{background:var(--ex);border:1px solid var(--line);border-radius:10px;padding:15px 18px;overflow-x:auto;font:13px/1.6 var(--mono);margin:0 0 16px}
+pre code{background:none;border:0;padding:0}
+pre .c{color:var(--faint)}
+
+table{border-collapse:collapse;width:100%;margin:0 0 18px;font-size:14.5px}
+th{text-align:left;font-size:12px;font-weight:650;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);border-bottom:2px solid var(--line);padding:8px 10px}
+td{border-bottom:1px solid var(--line);padding:9px 10px;vertical-align:top}
+td code{white-space:nowrap}
+.tblwrap{overflow-x:auto;margin:0 0 4px}
+
+.note,.example,.issue{border-left:4px solid var(--note-edge);background:var(--note);border-radius:0 10px 10px 0;padding:13px 18px;margin:0 0 16px;font-size:14.5px}
+.note>.lbl,.example>.lbl,.issue>.lbl{display:block;font:600 11.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--acc-ink);margin-bottom:6px}
+.example{background:var(--ex);border-left-color:var(--faint)}
+.example>.lbl{color:var(--soft)}
+.issue{background:var(--issue);border-left-color:var(--issue-edge)}
+.issue>.lbl{color:var(--issue-edge)}
+.note p:last-child,.example p:last-child,.issue p:last-child,.example pre:last-child{margin-bottom:0}
+
+dfn{font-style:normal;font-weight:650;color:var(--acc-ink)}
+.rfc{font-variant:small-caps;letter-spacing:.02em}
+dl.terms dt{font-weight:650;margin-top:14px}
+dl.terms dd{margin:4px 0 0 0}
+.algo{counter-reset:step;margin:0 0 16px;padding:0;list-style:none}
+.algo>li{counter-increment:step;display:flex;gap:12px;margin-bottom:8px}
+.algo>li::before{content:counter(step);flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--acc-soft);color:var(--acc-ink);display:grid;place-items:center;font:600 12.5px var(--mono);margin-top:1px}
+footer{margin-top:70px;padding-top:22px;border-top:1px solid var(--line);font-size:13.5px;color:var(--faint)}
+</style></head><body><div class="page">
+
+<div class="masthead">
+  <div class="logo">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="9" cy="12" r="3.1" stroke="var(--acc)" stroke-width="2"/>
+      <path d="M14.5 7.5a6.4 6.4 0 0 1 0 9" stroke="var(--acc)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M17.8 5a10.4 10.4 0 0 1 0 14" stroke="var(--acc)" stroke-width="2" stroke-linecap="round" opacity=".45"/>
+    </svg>
+    SolidPay
+  </div>
+  <h1 class="title">SolidPay Protocol 1.0</h1>
+  <p class="subtitle">Routable trust money: bilateral credit, payments over a web of trust, and a self-proving ledger.</p>
+  <dl class="meta">
+    <dt>Status</dt><dd><span class="pill">Editor's Draft</span></dd>
+    <dt>This version</dt><dd><a href="https://jss.live/solidpay/docs/spec/">https://jss.live/solidpay/docs/spec/</a></dd>
+    <dt>Issue tracking</dt><dd><a href="https://github.com/JavaScriptSolidServer/solidpay/issues">GitHub Issues</a></dd>
+    <dt>Editor</dt><dd>Melvin Carvalho</dd>
+    <dt>Reference code</dt><dd><a href="https://github.com/JavaScriptSolidServer/solidpay">JavaScriptSolidServer/solidpay</a> (MIT)</dd>
+    <dt>Modified</dt><dd>29 July 2026</dd>
+  </dl>
+</div>
+
+<h2 id="abstract">Abstract<a class="self" href="#abstract">§</a></h2>
+<p>SolidPay is a protocol for <em>trust money</em>: value represented as bilateral IOUs between
+identified agents, and payments routed through chains of pre-granted credit. It revives the design of
+the original Ripple (Fugger, 2004) — no blockchain, no native token, no global consensus — and adds
+three properties the 2004 design lacked: every agent is a dereferenceable <strong>URI</strong>; every
+state change is an entry in a <strong>hash-chained transition log</strong> that anyone can re-derive;
+and (from protocol level&nbsp;1) every transition carries a <strong>digital signature</strong> by its
+actor, making the ledger verifiable without trusting the node that holds it.</p>
+
+<h2 id="sotd">Status of This Document<a class="self" href="#sotd">§</a></h2>
+<p>This is an Editor's Draft, published for implementation and review. It specifies protocol
+<strong>level&nbsp;0</strong> (single-node operation) normatively and drafts protocol
+<strong>level&nbsp;1</strong> (signatures) in <a href="#signatures">§&nbsp;9</a>. Federation
+(level&nbsp;2) is out of scope for this document and tracked in the
+<a href="../roadmap.md">roadmap</a>. The <a href="https://github.com/JavaScriptSolidServer/solidpay">reference
+implementation</a> passes the <a href="#vectors">test vectors in Appendix&nbsp;A</a>.</p>
+
+<nav class="toc"><div class="toc-h">Table of contents</div><ol>
+<li><a href="#intro"><span class="n">1</span>Introduction</a></li>
+<li><a href="#conformance"><span class="n">2</span>Conformance</a></li>
+<li><a href="#terminology"><span class="n">3</span>Terminology</a></li>
+<li><a href="#identity"><span class="n">4</span>Identity</a></li>
+<li><a href="#datamodel"><span class="n">5</span>Data model</a></li>
+<li><a href="#algorithms"><span class="n">6</span>Algorithms</a></li>
+<li><a href="#transitions"><span class="n">7</span>Transitions</a></li>
+<li><a href="#log"><span class="n">8</span>The transition log</a></li>
+<li><a href="#signatures"><span class="n">9</span>Signatures (level 1)</a></li>
+<li><a href="#http"><span class="n">10</span>HTTP API</a></li>
+<li><a href="#security"><span class="n">11</span>Security considerations</a></li>
+<li><a href="#privacy"><span class="n">12</span>Privacy considerations</a></li>
+<li><a href="#vectors"><span class="n">A</span>Test vectors</a></li>
+<li><a href="#references"><span class="n">B</span>References</a></li>
+</ol></nav>
+
+<h2 id="intro"><span class="secno">1.</span>Introduction<a class="self" href="#intro">§</a></h2>
+<p>Ryan Fugger's insight was that trust relationships between people <em>are</em> a payment network.
+If Bob is willing to let Alice owe him up to 1,000 units, and Carol is willing to let Bob owe her up
+to 500, then Alice can pay Carol 300 <em>through</em> Bob: after the payment, Alice owes Bob 300 and
+Bob owes Carol 300. No money moved; obligations did. Crucially, <strong>nobody along the path had to
+approve the payment</strong> — every hop consumed credit its recipient had already granted. That
+pre-authorization is the routing permission.</p>
+<p>SolidPay specifies that model precisely enough to implement interoperably, then hardens it:
+identities are URIs rather than rows in one operator's database; the ledger is a hash chain rather
+than a mutable table; and signatures (level&nbsp;1) shift the node's role from <em>authority</em> to
+<em>coordinator</em> — verify, don't trust.</p>
+
+<h3 id="goals"><span class="secno">1.1</span>Design goals<a class="self" href="#goals">§</a></h3>
+<ul>
+<li><strong>No blockchain, no token.</strong> Trust is bilateral; there is nothing to mine and no
+global state to agree on.</li>
+<li><strong>Determinism.</strong> Every hash, balance, and validation rule in this document is
+specified byte-exactly; two implementations fed the same transitions produce the same tip hash.</li>
+<li><strong>Self-describing history.</strong> An auditor holding only the log can re-derive and
+verify the entire state.</li>
+<li><strong>Zero-trust trajectory.</strong> Level&nbsp;0 trusts the node to attribute actors
+honestly; level&nbsp;1 removes that trust with actor signatures. The data model is identical in
+both levels so a level-0 log can be understood by level-1 software.</li>
+</ul>
+
+<h2 id="conformance"><span class="secno">2.</span>Conformance<a class="self" href="#conformance">§</a></h2>
+<p>The key words <span class="rfc">must</span>, <span class="rfc">must not</span>,
+<span class="rfc">should</span>, <span class="rfc">may</span>, and
+<span class="rfc">required</span> in this document are to be interpreted as described in
+BCP&nbsp;14 [<a href="#ref-rfc2119">RFC2119</a>] [<a href="#ref-rfc8174">RFC8174</a>] when, and only
+when, they appear in all capitals, as shown here — in this document they are rendered in small
+capitals.</p>
+<p>This specification defines three conformance classes:</p>
+<div class="tblwrap"><table>
+<tr><th>Class</th><th>Description</th><th>Requirements</th></tr>
+<tr><td><dfn id="dfn-node">Node</dfn></td><td>Software that holds ledger state and accepts
+transitions.</td><td>All of §&nbsp;4–8; §&nbsp;10 if it exposes the HTTP API; §&nbsp;9 at
+level&nbsp;1.</td></tr>
+<tr><td><dfn id="dfn-client">Client</dfn></td><td>Software that submits transitions and reads state
+on behalf of an agent.</td><td>§&nbsp;4 (identity), §&nbsp;5.1–5.2 (amounts and currencies),
+§&nbsp;10 (API usage).</td></tr>
+<tr><td><dfn id="dfn-auditor">Auditor</dfn></td><td>Software that verifies a log without holding
+authority over it.</td><td>§&nbsp;6.1 (canonicalization), §&nbsp;8 (chain verification); §&nbsp;9.4
+at level&nbsp;1.</td></tr>
+</table></div>
+
+<h2 id="terminology"><span class="secno">3.</span>Terminology<a class="self" href="#terminology">§</a></h2>
+<dl class="terms">
+<dt id="dfn-agent">agent</dt><dd>A participant in the network, identified by a URI
+(<a href="#identity">§&nbsp;4</a>). Agents may be people, organisations, or software.</dd>
+<dt id="dfn-trustline">trustline</dt><dd>A unilateral grant of credit: the tuple
+<code>(creditor, debtor, currency, limit)</code> meaning "the creditor permits the debtor to owe
+them up to <code>limit</code> of <code>currency</code>."</dd>
+<dt id="dfn-balance">balance</dt><dd>The single signed IOU amount between an unordered pair of
+agents in one currency (<a href="#balances">§&nbsp;5.4</a>).</dd>
+<dt id="dfn-capacity">capacity</dt><dd>The amount that can still flow across a directed hop:
+<code>capacity(x→y) = limit(y→x) − debt(x→y)</code>.</dd>
+<dt id="dfn-transition">transition</dt><dd>A validated state change: one of
+<code>create-trustline</code>, <code>update-trustline</code>, <code>remove-trustline</code>,
+<code>send-payment</code>, <code>settle</code>.</dd>
+<dt id="dfn-log">transition log</dt><dd>The append-only, hash-chained sequence of every transition a
+node has applied (<a href="#log">§&nbsp;8</a>). Its newest hash is the <dfn id="dfn-tip">tip</dfn>.</dd>
+<dt id="dfn-level">protocol level</dt><dd>Level&nbsp;0: transitions attributed by the node.
+Level&nbsp;1: transitions signed by their actor (<a href="#signatures">§&nbsp;9</a>).</dd>
+</dl>
+
+<h2 id="identity"><span class="secno">4.</span>Identity<a class="self" href="#identity">§</a></h2>
+<h3 id="agent-uris"><span class="secno">4.1</span>Agent URIs<a class="self" href="#agent-uris">§</a></h3>
+<p>Every agent is identified by a URI. This specification defines behaviour for three families:</p>
+<div class="tblwrap"><table>
+<tr><th>Family</th><th>Form</th><th>Notes</th></tr>
+<tr><td>Node-local</td><td><code>https://&lt;node&gt;/u/&lt;name&gt;#me</code></td><td>Minted by a
+node at registration. The URI with its fragment removed <span class="rfc">must</span> dereference to
+a profile document (<a href="#profiles">§&nbsp;4.3</a>).</td></tr>
+<tr><td>Solid WebID</td><td><code>https://&lt;host&gt;/&lt;pod&gt;/profile/card#me</code></td>
+<td>[<a href="#ref-webid">WEBID</a>]. Subject to the canonical-spelling rule below.</td></tr>
+<tr><td>DID</td><td><code>did:nostr:&lt;hex&gt;</code> and other DID methods</td>
+<td>[<a href="#ref-did">DID-CORE</a>]. For <code>did:nostr</code> the 64-char lower-case hex public
+key is canonical; the bech32 <code>npub</code> form is display-only and
+<span class="rfc">must not</span> appear in ledger state.</td></tr>
+</table></div>
+<h3 id="canonical-spelling"><span class="secno">4.2</span>Canonical spelling<a class="self" href="#canonical-spelling">§</a></h3>
+<p>One agent <span class="rfc">must</span> have exactly one spelling everywhere in ledger state. An
+implementation <span class="rfc">must</span> apply the following normalization to every agent URI at
+every entry point (authentication results and every <code>peer</code>, <code>to</code>,
+<code>from</code>, or <code>agent</code> parameter) before comparison or storage:</p>
+<ol class="algo">
+<li>If the URI contains the substring <code>/profile/card.jsonld#</code>, replace it with
+<code>/profile/card#</code> (the WebID <em>document form</em> normalizes to the <em>fragment
+form</em>).</li>
+<li>Otherwise the URI is unchanged. In particular, DIDs pass through byte-identically.</li>
+</ol>
+<div class="note"><span class="lbl">Note</span>
+<p>This rule exists because the failure it prevents was observed in practice: an authentication layer
+returned the document form while stored trustlines named the fragment form, and the graph silently
+split — trustlines existed, yet no payment could route. An identity-keyed system fails
+<em>quietly</em> on spelling drift; normalization is therefore normative, not advisory.</p></div>
+<p>Agent URIs are compared by exact byte equality after normalization. The character
+<code>|</code> (U+007C) <span class="rfc">must not</span> appear in an agent URI
+(<a href="#balances">§&nbsp;5.4</a>).</p>
+<h3 id="profiles"><span class="secno">4.3</span>Profile documents<a class="self" href="#profiles">§</a></h3>
+<p>For a node-local agent <code>https://&lt;node&gt;/u/&lt;name&gt;#me</code>, the node
+<span class="rfc">must</span> serve <code>GET /u/&lt;name&gt;</code> as a JSON document whose
+<code>@id</code> member equals the agent URI. It <span class="rfc">should</span> include
+<code>name</code> and the node origin. At level&nbsp;1 it <span class="rfc">must</span> also carry
+the agent's verification key (<a href="#sig-binding">§&nbsp;9.2</a>).</p>
+
+<h2 id="datamodel"><span class="secno">5.</span>Data model<a class="self" href="#datamodel">§</a></h2>
+<h3 id="amounts"><span class="secno">5.1</span>Amounts<a class="self" href="#amounts">§</a></h3>
+<p>Amounts cross APIs as JSON numbers with at most <strong>6 decimal places</strong>, in the open
+interval <code>0 &lt; amount ≤ 10¹²</code>. Internally, all arithmetic
+<span class="rfc">must</span> be performed on integer <dfn id="dfn-micro">micro-units</dfn>
+(<code>amount × 10⁶</code>) using arbitrary-precision or 64-bit-safe integers. A value that is not a
+finite number, is non-positive, exceeds the ceiling, or has more than 6 decimal places
+<span class="rfc">must</span> be rejected with status 400. Implementations
+<span class="rfc">must not</span> perform ledger arithmetic in binary floating point.</p>
+<h3 id="currencies"><span class="secno">5.2</span>Currencies<a class="self" href="#currencies">§</a></h3>
+<p>A currency code matches <code>[A-Z0-9]{1,12}</code> after upper-casing on input. Codes carry no
+built-in semantics: <code>USD</code>, <code>SATS</code>, <code>HRS</code>, and <code>BEER</code> are
+equally valid. Currencies are fully isolated: a trustline or balance in one currency confers no
+capacity in any other.</p>
+<h3 id="trustlines"><span class="secno">5.3</span>Trustlines<a class="self" href="#trustlines">§</a></h3>
+<p>A trustline is keyed by <code>(creditor, debtor, currency)</code> and carries a single
+<code>limit</code> in micro-units. Rules:</p>
+<ul>
+<li>The trustline is <strong>unilateral</strong>: only the creditor <span class="rfc">may</span>
+create, resize, or remove it. In every transition the creditor <strong>is the authenticated
+actor</strong> — implementations <span class="rfc">must not</span> accept a creditor as a request
+parameter.</li>
+<li><code>limit = 0</code> is valid and freezes new credit without erasing the line.</li>
+<li>A reflexive line (<code>creditor = debtor</code>) is invalid (400).</li>
+<li>Lowering <code>limit</code> below the current debt is permitted; it blocks new credit and leaves
+the existing balance intact.</li>
+<li>Removal <span class="rfc">must</span> be refused with 409 while
+<code>debt(debtor→creditor) &gt; 0</code>. The IOU record lives in the balance
+(§&nbsp;5.4), not the line — removal must not be able to vaporize a debt.</li>
+</ul>
+<h3 id="balances"><span class="secno">5.4</span>Balances<a class="self" href="#balances">§</a></h3>
+<p>For each unordered pair of agents and currency there is exactly <strong>one signed
+balance</strong>. Let <code>[lo, hi]</code> be the two agent URIs sorted by byte order; the balance
+records how much <code>lo</code> owes <code>hi</code> (negative when <code>hi</code> owes
+<code>lo</code>), keyed by the string <code>lo|hi|currency</code>. A balance of exactly zero
+<span class="rfc">must</span> be deleted rather than stored.</p>
+<div class="note"><span class="lbl">Note</span><p>Storing one signed number rather than two mirrored
+entries makes double-entry desynchronization <em>unrepresentable</em>: the two directions of a pair
+are the same number, negated, by construction.</p></div>
+
+<h2 id="algorithms"><span class="secno">6.</span>Algorithms<a class="self" href="#algorithms">§</a></h2>
+<h3 id="jcs"><span class="secno">6.1</span>Canonical JSON<a class="self" href="#jcs">§</a></h3>
+<p>Wherever this specification hashes or signs JSON, the bytes are the UTF-8 encoding of the
+value's canonical serialization per JCS [<a href="#ref-rfc8785">RFC8785</a>]: object members sorted
+by code-unit order of their (NFC-normalized) names, no insignificant whitespace, canonical number
+form, members whose value is <code>undefined</code> omitted. The value space of ledger entries —
+objects, arrays, strings, integers within 2⁵³, booleans, <code>null</code> — avoids the
+non-integer-number edge cases of full JCS.</p>
+<div class="example"><span class="lbl">Example — key ordering and NFC</span>
+<pre><code>canonicalize({ b: 1, a: "x", "é": true })
+→ {"a":"x","b":1,"é":true}</code></pre></div>
+<h3 id="debt-capacity"><span class="secno">6.2</span>Debt and capacity<a class="self" href="#debt-capacity">§</a></h3>
+<pre><code>debt(x→y)      = balance(lo,hi,cur) · (x = lo ? +1 : −1)   <span class="c">// what x owes y; may be negative</span>
+capacity(x→y)  = limit(y→x) − debt(x→y)                     <span class="c">// limit(y→x) = 0 if no line</span></code></pre>
+<p>Negative debt makes owed-to-you credit spendable with no trustline at all: if <code>y</code> owes
+<code>x</code> 30, then <code>capacity(x→y) = 30</code> even when <code>y</code> extends
+<code>x</code> nothing. A payment in the reverse direction therefore clears existing debt first
+(<em>clearing</em>).</p>
+<h3 id="routing"><span class="secno">6.3</span>Route discovery<a class="self" href="#routing">§</a></h3>
+<p>Given <code>(from, to, currency, amount)</code>, a conforming node <span class="rfc">must</span>
+select a route satisfying all of:</p>
+<ol class="algo">
+<li>The route is a simple path <code>from = p₀ → p₁ → … → pₙ = to</code> with
+<code>n ≤ 8</code> hops.</li>
+<li>Every hop satisfies <code>capacity(pᵢ→pᵢ₊₁) ≥ amount</code> — the <em>full</em> amount; this
+level of the protocol has no partial fills and no amount splitting.</li>
+<li><code>n</code> is minimal: no shorter path satisfying (2) exists.</li>
+</ol>
+<p>Among equally short routes the choice is implementation-defined. If no route satisfies the
+constraints the payment <span class="rfc">must</span> fail with 404 and
+<span class="rfc">must not</span> modify any balance.</p>
+
+<h2 id="transitions"><span class="secno">7.</span>Transitions<a class="self" href="#transitions">§</a></h2>
+<h3 id="tx-common"><span class="secno">7.1</span>Common structure<a class="self" href="#tx-common">§</a></h3>
+<p>Every applied transition appends exactly one log entry
+(<a href="#log">§&nbsp;8</a>):</p>
+<pre><code>{
+  "seq":    7,                          <span class="c">// 1-based, dense, strictly increasing</span>
+  "prev":   "sha256:…",                 <span class="c">// hash of entry seq−1; null for seq 1</span>
+  "ts":     "2026-07-29T12:02:00.000Z", <span class="c">// RFC 3339 UTC, node clock</span>
+  "actor":  "&lt;agent URI&gt;",              <span class="c">// the authenticated agent</span>
+  "type":   "send-payment",
+  "params": { … },                      <span class="c">// per-type, see below; amounts as decimals</span>
+  "hash":   "sha256:…"                  <span class="c">// § 8.1</span>
+}</code></pre>
+<p>Validation and state mutation <span class="rfc">must</span> be atomic with the log append: either
+the transition applies fully and its entry is appended, or nothing changes. A rejected transition
+appends nothing.</p>
+<h3 id="tx-table"><span class="secno">7.2</span>Types, parameters, and errors<a class="self" href="#tx-table">§</a></h3>
+<div class="tblwrap"><table>
+<tr><th>Type</th><th><code>params</code></th><th>Preconditions (else status)</th><th>Effect</th></tr>
+<tr><td><code>create-trustline</code><br><code>update-trustline</code></td>
+<td><code>{peer, currency, limit}</code></td>
+<td>valid peer ≠ actor (400); valid currency (400); <code>limit ≥ 0</code> valid amount or 0
+(400)</td>
+<td>Line <code>(actor, peer, currency)</code> set to <code>limit</code>. <code>create</code> when
+the key was absent, else <code>update</code>.</td></tr>
+<tr><td><code>remove-trustline</code></td>
+<td><code>{peer, currency}</code></td>
+<td>line exists (404); <code>debt(peer→actor) ≤ 0</code> (409)</td>
+<td>Line deleted. The pair balance is untouched.</td></tr>
+<tr><td><code>send-payment</code></td>
+<td><code>{from, to, currency, amount, path}</code><br><small><code>from</code> = actor;
+<code>path</code> is the route taken</small></td>
+<td>valid to ≠ actor (400); valid currency and amount (400); route exists per §&nbsp;6.3 (404)</td>
+<td>For each hop <code>i</code>: <code>debt(pᵢ→pᵢ₊₁) += amount</code>. Atomic across all
+hops.</td></tr>
+<tr><td><code>settle</code></td>
+<td><code>{peer, currency, amount}</code></td>
+<td>valid inputs (400); <code>debt(peer→actor) ≥ amount</code> (409)</td>
+<td><code>debt(peer→actor) −= amount</code>. Only the creditor — the party whose claim shrinks —
+records repayment.</td></tr>
+</table></div>
+<p>Error responses are JSON <code>{"error": "&lt;human-readable reason&gt;"}</code> with the status
+codes above, plus 401 for unauthenticated writes and 400 for unparseable bodies.</p>
+
+<h2 id="log"><span class="secno">8.</span>The transition log<a class="self" href="#log">§</a></h2>
+<h3 id="entry-hash"><span class="secno">8.1</span>Entry hash<a class="self" href="#entry-hash">§</a></h3>
+<pre><code>hash = "sha256:" ‖ lowerhex( SHA-256( UTF8( JCS( entry \ {hash, sig} ) ) ) )</code></pre>
+<p>The entry's own <code>hash</code> and (level&nbsp;1) <code>sig</code> members are excluded from
+the hashed bytes; every other member is included. <code>prev</code> is the previous entry's
+<code>hash</code> (<code>null</code> for <code>seq&nbsp;1</code>), so each hash transitively commits
+to the entire prior history. The newest hash is the log's <a href="#dfn-tip">tip</a>.</p>
+<h3 id="verification"><span class="secno">8.2</span>Chain verification<a class="self" href="#verification">§</a></h3>
+<p>An <a href="#dfn-auditor">auditor</a> verifies a log as follows; a log is valid iff every step
+holds for every entry, in order:</p>
+<ol class="algo">
+<li><code>seq</code> values are dense from 1 (each entry's <code>seq</code> = its predecessor's + 1).</li>
+<li><code>prev</code> equals the previous entry's <code>hash</code> (<code>null</code> for the
+first).</li>
+<li>Recomputing §&nbsp;8.1 over the entry reproduces its stored <code>hash</code>.</li>
+<li>(Level&nbsp;1) the signature verifies per <a href="#sig-verify">§&nbsp;9.4</a>.</li>
+</ol>
+<p>Because balances and trustlines are pure functions of the transition sequence, an auditor
+<span class="rfc">may</span> additionally replay the log through §&nbsp;7 and compare the resulting
+state to the node's reported state; any divergence proves misbehaviour.</p>
+
+<h2 id="signatures"><span class="secno">9.</span>Signatures — protocol level 1
+<span class="pill" style="vertical-align:middle;margin-left:8px">Draft</span><a class="self" href="#signatures">§</a></h2>
+<h3 id="sig-model"><span class="secno">9.1</span>Model<a class="self" href="#sig-model">§</a></h3>
+<p>Level&nbsp;0 trusts the node to attribute <code>actor</code> honestly. Level&nbsp;1 removes that
+trust: each entry gains a <code>sig</code> member — a BIP-340 Schnorr signature
+[<a href="#ref-bip340">BIP340</a>] over <code>SHA-256(UTF8(JCS(entry \ {hash, sig})))</code> — the
+exact bytes the hash covers — made with the secp256k1 key bound to the actor
+(§&nbsp;9.2). A level-1 node <span class="rfc">must</span> reject any transition whose signature
+does not verify — including transitions it originates itself. The node thereby becomes a
+coordinator, not an authority.</p>
+<h3 id="sig-binding"><span class="secno">9.2</span>Key binding<a class="self" href="#sig-binding">§</a></h3>
+<ul>
+<li><code>did:nostr:&lt;hex&gt;</code> agents: the DID <em>is</em> the x-only public key.</li>
+<li>Node-local and WebID agents: the profile document <span class="rfc">must</span> carry a
+<code>verificationMethod</code> whose public key the signature verifies against.</li>
+</ul>
+<h3 id="sig-nostr"><span class="secno">9.3</span>Nostr event mapping<a class="self" href="#sig-nostr">§</a></h3>
+<p>A signed transition maps losslessly onto a nostr event [<a href="#ref-nip01">NIP-01</a>]
+(<code>pubkey</code> ← actor key, <code>created_at</code> ← <code>ts</code>, <code>kind</code> ←
+per-type kind number, <code>content</code> ← JCS entry, <code>sig</code> ← <code>sig</code>). Kind
+numbers will be registered before level&nbsp;1 ships. This mapping is deliberate: it lets relays
+carry ledger history, which is the transport for federation (level&nbsp;2).</p>
+<h3 id="sig-verify"><span class="secno">9.4</span>Verification<a class="self" href="#sig-verify">§</a></h3>
+<p>An auditor verifying a level-1 entry <span class="rfc">must</span>: resolve the actor's key per
+§&nbsp;9.2, recompute the signed bytes, and verify <code>sig</code> per BIP-340. Signature
+verification composes with — never replaces — chain verification
+(<a href="#verification">§&nbsp;8.2</a>).</p>
+<div class="issue"><span class="lbl">Open issues (level 1)</span>
+<p>Key rotation and revocation for node-local agents; multi-key agents; whether
+<code>settle</code> should optionally carry the <em>debtor's</em> counter-signature as a receipt.
+Tracked on GitHub.</p></div>
+
+<h2 id="http"><span class="secno">10.</span>HTTP API<a class="self" href="#http">§</a></h2>
+<p>A node exposing HTTP <span class="rfc">must</span> implement the following resources. Writes
+require <code>Authorization: Bearer</code> (level&nbsp;0: node-issued token; level&nbsp;1: the
+signature within the body makes the bearer optional). All responses are JSON; errors are
+<code>{"error": string}</code> with the status codes of §&nbsp;7.2. CORS
+<span class="rfc">should</span> be permissive on reads.</p>
+<div class="tblwrap"><table>
+<tr><th>Method &amp; path</th><th>Body / query</th><th>Success</th></tr>
+<tr><td><code>POST /api/register</code></td><td><code>{username, password}</code></td>
+<td>201 <code>{agent, token}</code>; 409 if taken</td></tr>
+<tr><td><code>POST /api/login</code></td><td><code>{username, password}</code></td>
+<td>200 <code>{agent, token}</code>; 401 on mismatch</td></tr>
+<tr><td><code>GET /api/whoami</code></td><td>—</td><td>200 <code>{agent | null}</code></td></tr>
+<tr><td><code>GET /u/&lt;name&gt;</code></td><td>—</td><td>200 profile document (§&nbsp;4.3)</td></tr>
+<tr><td><code>GET /api/graph</code></td><td>—</td>
+<td>200 <code>{trustlines[], balances[], seq, tip}</code></td></tr>
+<tr><td><code>GET /api/balances</code></td><td><code>?agent=&lt;uri&gt;</code></td>
+<td>200 <code>{agent, positions[], net{}}</code></td></tr>
+<tr><td><code>GET /api/path</code></td><td><code>?from&amp;to&amp;currency&amp;amount</code></td>
+<td>200 <code>{path[], hops}</code>; 404 no route</td></tr>
+<tr><td><code>POST /api/trustlines</code></td><td><code>{peer, currency, limit}</code></td>
+<td>201 created / 200 updated</td></tr>
+<tr><td><code>POST /api/trustlines/remove</code></td><td><code>{peer, currency}</code></td>
+<td>200; 409 outstanding debt</td></tr>
+<tr><td><code>POST /api/payments</code></td><td><code>{to, currency, amount}</code></td>
+<td>200 <code>{payment{…, path[]}, entry}</code>; 404 no route</td></tr>
+<tr><td><code>POST /api/settle</code></td><td><code>{peer, currency, amount}</code></td>
+<td>200 <code>{settled{…, remaining}, entry}</code>; 409 over-settle</td></tr>
+<tr><td><code>GET /api/log</code></td><td><code>?limit=N</code> (≤ 500)</td>
+<td>200 <code>{seq, tip, entries[]}</code></td></tr>
+<tr><td><code>GET /api/log/verify</code></td><td>—</td>
+<td>200 <code>{valid, seq, tip}</code> or <code>{valid: false, brokenAt}</code></td></tr>
+</table></div>
+<div class="example"><span class="lbl">Example — a routed payment</span>
+<pre><code>POST /api/payments
+Authorization: Bearer v1.eyJhIjoi…
+Content-Type: application/json
+
+{"to": "https://n.example/u/carol#me", "currency": "USD", "amount": 300}
+
+HTTP/1.1 200 OK
+{
+  "payment": { "from": "https://n.example/u/alice#me",
+               "to":   "https://n.example/u/carol#me",
+               "currency": "USD", "amount": 300,
+               "path": ["…/u/alice#me", "…/u/bob#me", "…/u/carol#me"] },
+  "entry":   { "seq": 3, "prev": "sha256:151bb2…", "type": "send-payment", … }
+}</code></pre></div>
+
+<h2 id="security"><span class="secno">11.</span>Security considerations<a class="self" href="#security">§</a></h2>
+<ul>
+<li><strong>Credit risk is the design, not a flaw.</strong> A trustline is a genuine exposure: the
+creditor can lose at most <code>limit</code> per line, and nothing else. There is no systemic
+leverage to contain — the security model of the network is the sum of individually chosen,
+individually capped risks.</li>
+<li><strong>Attribution (level 0).</strong> The node can misattribute actors; the hash chain proves
+<em>ordering and integrity</em>, not <em>authorship</em>. Deployments that need non-repudiation must
+use level&nbsp;1.</li>
+<li><strong>Tokens.</strong> Node-issued bearers <span class="rfc">must</span> be integrity-protected
+(the reference uses HMAC-SHA-256 with a per-node secret and constant-time comparison), carry an
+expiry, and never appear in URLs. Passwords <span class="rfc">must</span> be hashed with a memory-hard
+KDF (the reference uses scrypt with per-user salts).</li>
+<li><strong>Determinism as defence.</strong> Because state is a pure function of the log, replay by
+an auditor detects node tampering: a node cannot silently edit a balance without breaking either a
+hash or a replay.</li>
+<li><strong>Resource limits.</strong> Route search is bounded (≤ 8 hops); request bodies
+<span class="rfc">should</span> be capped (reference: 64&nbsp;KiB); log reads are paginated
+(≤ 500 entries). Registration on open testnets <span class="rfc">should</span> be rate-limited.</li>
+<li><strong>Float safety.</strong> Micro-unit integer arithmetic (§&nbsp;5.1) is normative
+precisely because a ledger that drifts by 2⁻⁵³ is a ledger with an unaccountable balance.</li>
+</ul>
+
+<h2 id="privacy"><span class="secno">12.</span>Privacy considerations<a class="self" href="#privacy">§</a></h2>
+<p>At level&nbsp;0 the graph — who trusts whom, for how much, and who owes whom — is publicly
+readable, which route discovery requires of the node and a testnet tolerates. This is a meaningful
+disclosure: credit relationships are social relationships. The original RipplePay showed each user
+only their own lines. A per-agent visibility model (own lines, own balances, routes that touch you)
+is a level-1 design goal; deployments handling real obligations <span class="rfc">should not</span>
+expose the full graph publicly. Usernames are public by construction (they are URIs); agents who
+need unlinkability <span class="rfc">should</span> use pseudonymous names or DIDs.</p>
+
+<h2 id="vectors"><span class="secno">A.</span>Test vectors<a class="self" href="#vectors">§</a></h2>
+<p>An implementation is expected to reproduce these values exactly. Agents:
+<code>A = https://n.example/u/alice#me</code>, <code>B = …/u/bob#me</code>,
+<code>C = …/u/carol#me</code>.</p>
+<h3 id="v-jcs">A.1 Canonicalization</h3>
+<pre><code>input:  { b: 1, a: "x", "é": true }
+JCS:    {"a":"x","b":1,"é":true}</code></pre>
+<h3 id="v-keys">A.2 Balance key and micro-units</h3>
+<pre><code>pairKey(B, A, "USD") = "https://n.example/u/alice#me|https://n.example/u/bob#me|USD"
+                        <span class="c">// lo = alice (byte order), regardless of argument order</span>
+toMicro(300)      = 300000000
+toMicro(0.000001) = 1
+toMicro(0.0000001) → invalid (&gt; 6 dp)</code></pre>
+<h3 id="v-chain">A.3 A three-entry chain</h3>
+<pre><code><span class="c">// entry 1 — bob extends alice 1000 USD</span>
+{ "seq":1, "prev":null, "ts":"2026-07-29T12:00:00.000Z", "actor":B,
+  "type":"create-trustline", "params":{"peer":A,"currency":"USD","limit":1000} }
+hash₁ = sha256:27ae26a0a5abe78b3dca9cba1fdb73bd5df6652f32e5d7dc8396e06a0e84ec86
+
+<span class="c">// entry 2 — carol extends bob 500 USD</span>
+{ "seq":2, "prev":hash₁, "ts":"2026-07-29T12:01:00.000Z", "actor":C,
+  "type":"create-trustline", "params":{"peer":B,"currency":"USD","limit":500} }
+hash₂ = sha256:151bb238b8aa204bda446bc6574fd237bbac398c82a4335683a8749bdb408ef5
+
+<span class="c">// entry 3 — alice pays carol 300 USD via bob</span>
+{ "seq":3, "prev":hash₂, "ts":"2026-07-29T12:02:00.000Z", "actor":A,
+  "type":"send-payment",
+  "params":{"from":A,"to":C,"currency":"USD","amount":300,"path":[A,B,C]} }
+hash₃ = sha256:cf5289f9be4010c23ce11838819dab7fa287259d94530183aa77bd1de23786c4</code></pre>
+<p>The canonical (hashed) bytes of entry 3, for byte-exact comparison:</p>
+<pre style="white-space:pre-wrap;word-break:break-all"><code>{"actor":"https://n.example/u/alice#me","params":{"amount":300,"currency":"USD","from":"https://n.example/u/alice#me","path":["https://n.example/u/alice#me","https://n.example/u/bob#me","https://n.example/u/carol#me"],"to":"https://n.example/u/carol#me"},"prev":"sha256:151bb238b8aa204bda446bc6574fd237bbac398c82a4335683a8749bdb408ef5","seq":3,"ts":"2026-07-29T12:02:00.000Z","type":"send-payment"}</code></pre>
+<p>Resulting state: <code>debt(A→B) = debt(B→C) = 300 USD</code>;
+<code>capacity(A→B) = 700</code>; <code>capacity(B→C) = 200</code>; a further payment
+<code>A→C</code> of 900 finds no route and changes nothing.</p>
+
+<h2 id="references"><span class="secno">B.</span>References<a class="self" href="#references">§</a></h2>
+<h3>B.1 Normative</h3>
+<ul>
+<li id="ref-rfc2119">[RFC2119] — <a href="https://www.rfc-editor.org/rfc/rfc2119">Key words for use
+in RFCs to Indicate Requirement Levels</a></li>
+<li id="ref-rfc8174">[RFC8174] — <a href="https://www.rfc-editor.org/rfc/rfc8174">Ambiguity of
+Uppercase vs Lowercase in RFC 2119 Key Words</a></li>
+<li id="ref-rfc8785">[RFC8785] — <a href="https://www.rfc-editor.org/rfc/rfc8785">JSON
+Canonicalization Scheme (JCS)</a></li>
+<li id="ref-bip340">[BIP340] — <a href="https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki">Schnorr
+Signatures for secp256k1</a> <em>(level 1)</em></li>
+<li id="ref-did">[DID-CORE] — <a href="https://www.w3.org/TR/did-core/">Decentralized Identifiers
+(DIDs) v1.0</a></li>
+</ul>
+<h3>B.2 Informative</h3>
+<ul>
+<li id="ref-fugger">[FUGGER] — R. Fugger, <em>Money as IOUs in Social Trust Networks &amp; A Proposal
+for a Decentralized Currency Network Protocol</em>, 2004 ·
+<a href="https://classic.ripplepay.com/">classic.ripplepay.com</a></li>
+<li id="ref-webid">[WEBID] — <a href="https://www.w3.org/2005/Incubator/webid/spec/identity/">WebID
+1.0: Web Identity and Discovery</a></li>
+<li id="ref-nip01">[NIP-01] — <a href="https://github.com/nostr-protocol/nips/blob/master/01.md">Nostr:
+Basic protocol flow description</a></li>
+<li>[TRUSTLINE-V1] — <a href="https://github.com/webcontracts/webcontracts.github.io/issues/4">trustline.v1
+profile — Ryan Fugger's original Ripple as a web contract</a></li>
+<li>[BLOCKTRAILS] — <a href="https://blocktrails.org">Blocktrails: Bitcoin-anchored history</a>
+<em>(anchoring, level 3)</em></li>
+</ul>
+
+<footer>
+SolidPay Protocol 1.0 · Editor's Draft · text licensed
+<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, reference code
+<a href="https://github.com/JavaScriptSolidServer/solidpay/blob/gh-pages/LICENSE">MIT</a> ·
+<a href="https://jss.live/solidpay/">solidpay home</a>
+</footer>
+</div></body></html>

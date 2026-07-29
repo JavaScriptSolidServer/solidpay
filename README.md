@@ -9,7 +9,7 @@ hash-chained**, and (v1) **signatures via did:nostr**. No blockchain, no
 token, no consensus, no bank in the middle.
 
 Landing page: <https://jss.live/solidpay/> ·
-Spec: [docs/spec.md](docs/spec.md) · Roadmap: [docs/roadmap.md](docs/roadmap.md)
+Spec: <https://jss.live/solidpay/docs/spec/> · Roadmap: [docs/roadmap.md](docs/roadmap.md)
 
 ## Quickstart
 
@@ -52,7 +52,7 @@ micro-units; no float drift.
 server.js         the node: HTTP API + accounts + UI serving (zero deps)
 lib/engine.js     the ledger engine (pure model + transitions)
 lib/ui.js         the product UI (one server-rendered document)
-docs/spec.md      the protocol, including the v1 signature draft
+docs/spec/        the protocol spec (Editor's Draft, HTML) + pointer md
 docs/roadmap.md   v0 testnet → v1 signatures → v2 federation → v3 anchoring
 test/             engine units + full-HTTP integration (npm test)
 index.html        the landing page (GitHub Pages)
