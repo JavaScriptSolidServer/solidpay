@@ -35,6 +35,10 @@ const NAME_RE = /^[a-z0-9][a-z0-9._-]{1,30}$/;
 const TOKEN_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days
 const b64u = (b) => Buffer.from(b).toString('base64url');
 
+// Public-testnet armor: registrations per source IP per hour (in-memory —
+// resets on restart, which is the right amount of state for a throttle).
+const REGISTER_PER_HOUR = 10;
+
 export function createNode({ dataDir = './data', publicUrl = null } = {}) {
   fs.mkdirSync(dataDir, { recursive: true });
 
@@ -101,6 +105,23 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
     return null;
   };
 
+  // ---- register throttle -------------------------------------------------
+  const regHits = new Map(); // ip → [timestamps]
+  function registerAllowed(req) {
+    // Behind the reverse proxy the peer address is the proxy; trust its
+    // x-forwarded-for only in that deployment (it sets one; clients can't
+    // strip it). First hop = original client.
+    const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '?')
+      .split(',')[0].trim();
+    const now = Date.now();
+    const hits = (regHits.get(ip) || []).filter((t) => now - t < 3600_000);
+    if (hits.length >= REGISTER_PER_HOUR) return false;
+    hits.push(now);
+    regHits.set(ip, hits);
+    if (regHits.size > 10_000) regHits.clear(); // bound the map, crudely
+    return true;
+  }
+
   // ---- http plumbing -----------------------------------------------------
   const CORS = {
     'access-control-allow-origin': '*',
@@ -164,6 +185,9 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
         if (!NAME_RE.test(name)) return send(res, 400, { error: 'username: 2–31 chars of a-z 0-9 . _ -' });
         if (password.length < 8) return send(res, 400, { error: 'password: at least 8 characters' });
         if (p === '/api/register') {
+          if (!registerAllowed(req)) {
+            return send(res, 429, { error: 'too many registrations from your address — try again in an hour' });
+          }
           if (accounts[name]) return send(res, 409, { error: 'username already taken' });
           const salt = b64u(crypto.randomBytes(16));
           accounts[name] = { salt, hash: hashPassword(password, salt), created: new Date().toISOString() };
