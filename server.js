@@ -318,6 +318,19 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
       if (req.method === 'GET' && p === '/api/log') {
         return send(res, 200, ledger.log(url.searchParams.get('limit')));
       }
+      // Bitcoin anchors (Blocktrails module) — written by tools/anchor.js
+      // into <data>/anchor/, served read-only. Empty when the operator
+      // doesn't anchor; the ledger works identically either way.
+      if (req.method === 'GET' && p === '/api/anchors') {
+        let anchors = []; let trail = null;
+        try { anchors = JSON.parse(fs.readFileSync(path.join(dataDir, 'anchor', 'anchors.json'), 'utf8')); } catch { /* none */ }
+        try {
+          const t = JSON.parse(fs.readFileSync(path.join(dataDir, 'anchor', '.blocktrail.json'), 'utf8'));
+          trail = { pubkeyBase: t.pubkeyBase, network: t.network, states: (t.states || []).length };
+        } catch { /* none */ }
+        return send(res, 200, { anchors, trail });
+      }
+
       if (req.method === 'GET' && p === '/api/log/verify') {
         const chain = ledger.verifyLog();
         // Authorship audit on top of the chain audit (spec § 8.2 step 4):
