@@ -469,7 +469,9 @@ if (entry) {
     dataDir: process.env.DATA || './data',
     publicUrl: process.env.PUBLIC_URL || null,
   });
-  const { port, origin } = await node.listen(Number(process.env.PORT || 3480));
+  // HOST=127.0.0.1 for reverse-proxy deployments: the proxy is the only
+  // client, TRUST_PROXY=1 stays truthful, and the direct port disappears.
+  const { port, origin } = await node.listen(Number(process.env.PORT || 3480), process.env.HOST || '0.0.0.0');
   console.log(`solidpay node listening on port ${port}`);
   console.log(`  app:     ${origin}/`);
   console.log(`  api:     ${origin}/api/graph`);
