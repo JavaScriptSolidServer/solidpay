@@ -101,6 +101,15 @@ describe('solidpay node', () => {
     assert.strictEqual(log.tip, log.entries[log.entries.length - 1].hash);
   });
 
+  it('serves the currency registry — every currency is a URI', async () => {
+    const res = await fetch(`${base}/api/currencies`);
+    assert.strictEqual(res.status, 200);
+    const { currencies } = await res.json();
+    assert.ok(currencies.USD?.uri, 'USD resolves to a URI');
+    assert.strictEqual(currencies.TBTC4?.kind, 'chain');
+    assert.strictEqual(currencies.LLM?.kind, 'service', 'LLM tokens are service-settled');
+  });
+
   it('serves the app UI at /', async () => {
     const res = await fetch(`${base}/`);
     assert.strictEqual(res.status, 200);

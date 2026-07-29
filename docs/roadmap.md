@@ -46,3 +46,17 @@
       the recordweb pattern)
 - [ ] Agents as participants (autonomous trust management, routing fees?)
 - [ ] solidpay.org: site, spec home, and the 2018 → 2026 story
+
+## v4 — the machine economy
+
+- [x] Currency registry: every currency is a URI (registry.json +
+      GET /api/currencies; codes are aliases; kinds fiat-iou / chain /
+      service / mutual). TBTC3/TBTC4 registered as chain-settled; LLM
+      inference tokens registered as service-settled (serving IS the
+      settlement).
+- [ ] Settlement verification for chain currencies (settle carries a txid;
+      the node checks the testnet3/testnet4 transaction pays the creditor)
+- [ ] 402 loop: request → 402 → signed payment over a trustline → retry
+      (composes with the JSS pay plugin and ollama-proxy)
+- [ ] LLM agents as first-class participants (a did:nostr key + a policy:
+      extend trust, price tokens, settle by serving)

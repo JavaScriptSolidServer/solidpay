@@ -50,6 +50,17 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
   // served byte-identical at /xlogin.js. Immutable for a running server.
   const xloginSrc = fs.readFileSync(path.join(__dirname, 'lib', 'xlogin.js'), 'utf8');
 
+  // Currency registry: every currency is a URI; short codes are aliases that
+  // resolve here (registry.json seed + optional operator extensions in
+  // <data>/currencies.json). Unknown codes still transact — the registry is
+  // discovery, not permission.
+  let currencies = {};
+  try { currencies = JSON.parse(fs.readFileSync(path.join(__dirname, 'registry.json'), 'utf8')).currencies || {}; } catch { /* none */ }
+  try {
+    const extra = JSON.parse(fs.readFileSync(path.join(dataDir, 'currencies.json'), 'utf8'));
+    currencies = { ...currencies, ...(extra.currencies || extra) };
+  } catch { /* none */ }
+
   // ---- persistent bits ---------------------------------------------------
   const stateFile = path.join(dataDir, 'state.json');
   const accountsFile = path.join(dataDir, 'accounts.json');
@@ -308,6 +319,9 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
       // ---- reads ----
       if (req.method === 'GET' && p === '/api/whoami') return send(res, 200, { agent: agentOf(req, url) });
       if (req.method === 'GET' && p === '/api/graph') return send(res, 200, ledger.graph());
+      if (req.method === 'GET' && p === '/api/currencies') {
+        return send(res, 200, { currencies, note: 'codes are aliases; the uri is the currency\'s canonical identity. Unknown codes transact freely — the registry is discovery, not permission.' });
+      }
       if (req.method === 'GET' && p === '/api/balances') {
         return send(res, 200, ledger.balancesFor(url.searchParams.get('agent')));
       }

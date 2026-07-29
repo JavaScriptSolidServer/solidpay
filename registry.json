@@ -1,0 +1,63 @@
+{
+  "$comment": "SolidPay currency registry — every currency is a URI; short codes are display/wire aliases that resolve here. Served by every node at GET /api/currencies (operators may extend via <data>/currencies.json). Kinds: fiat-iou (settled out-of-band in the named fiat), chain (settled by an on-chain transaction on the named network), service (settled by delivery of the named service — e.g. LLM inference tokens), mutual (pure mutual credit, settlement by agreement).",
+  "currencies": {
+    "USD": {
+      "uri": "https://jss.live/solidpay/currency/usd",
+      "name": "US Dollar (IOU)",
+      "kind": "fiat-iou",
+      "decimals": 2
+    },
+    "EUR": {
+      "uri": "https://jss.live/solidpay/currency/eur",
+      "name": "Euro (IOU)",
+      "kind": "fiat-iou",
+      "decimals": 2
+    },
+    "GBP": {
+      "uri": "https://jss.live/solidpay/currency/gbp",
+      "name": "Pound Sterling (IOU)",
+      "kind": "fiat-iou",
+      "decimals": 2
+    },
+    "SATS": {
+      "uri": "https://jss.live/solidpay/currency/sats",
+      "name": "Bitcoin satoshis (IOU)",
+      "kind": "chain",
+      "network": "btc",
+      "decimals": 0,
+      "settlement": "on-chain bitcoin transaction; the creditor records it with settle"
+    },
+    "TBTC4": {
+      "uri": "https://jss.live/solidpay/currency/tbtc4",
+      "name": "Bitcoin testnet4 satoshis",
+      "kind": "chain",
+      "network": "tbtc4",
+      "decimals": 0,
+      "explorer": "https://mempool.guide/testnet4",
+      "settlement": "a testnet4 transaction paying the creditor; verifiable by anyone via the explorer"
+    },
+    "TBTC3": {
+      "uri": "https://jss.live/solidpay/currency/tbtc3",
+      "name": "Bitcoin testnet3 satoshis",
+      "kind": "chain",
+      "network": "tbtc3",
+      "decimals": 0,
+      "settlement": "a testnet3 transaction paying the creditor"
+    },
+    "HRS": {
+      "uri": "https://jss.live/solidpay/currency/hrs",
+      "name": "Hours (time credit)",
+      "kind": "mutual",
+      "decimals": 2,
+      "settlement": "an hour of work; the creditor records it with settle"
+    },
+    "LLM": {
+      "uri": "https://jss.live/solidpay/currency/llm",
+      "name": "LLM inference tokens (generic)",
+      "kind": "service",
+      "decimals": 0,
+      "settlement": "delivery of inference: the provider serving tokens IS the repayment — the creditor (consumer) records served usage with settle",
+      "$comment": "Provider/model-specific token currencies SHOULD mint their own code + URI (e.g. LLAMA70B -> <provider-agent-uri>/currency/llama-3-70b). An LLM agent is a did:nostr key + buildTxEvent; the 402 loop composes: request -> 402 -> signed payment over the trustline -> retry."
+    }
+  }
+}

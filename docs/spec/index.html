@@ -267,10 +267,30 @@ finite number, is non-positive, exceeds the ceiling, or has more than 6 decimal 
 <span class="rfc">must</span> be rejected with status 400. Implementations
 <span class="rfc">must not</span> perform ledger arithmetic in binary floating point.</p>
 <h3 id="currencies"><span class="secno">5.2</span>Currencies<a class="self" href="#currencies">§</a></h3>
-<p>A currency code matches <code>[A-Z0-9]{1,12}</code> after upper-casing on input. Codes carry no
-built-in semantics: <code>USD</code>, <code>SATS</code>, <code>HRS</code>, and <code>BEER</code> are
-equally valid. Currencies are fully isolated: a trustline or balance in one currency confers no
-capacity in any other.</p>
+<p>A currency code matches <code>[A-Z0-9]{1,12}</code> after upper-casing on input. Currencies are
+fully isolated: a trustline or balance in one currency confers no capacity in any other.</p>
+<p><strong>Every currency is a URI</strong>; the short code is a display/wire alias. Each node
+serves a registry at <code>GET /api/currencies</code> mapping codes to
+<code>{uri, name, kind, decimals, settlement}</code>; nodes seed it from the repository registry
+and operators <span class="rfc">may</span> extend it. The registry is <em>discovery, not
+permission</em>: unknown codes transact freely — but two parties who mean different things by a
+code have a dispute the registry exists to prevent. Registered kinds:</p>
+<div class="tblwrap"><table>
+<tr><th>Kind</th><th>Settled by</th><th>Examples</th></tr>
+<tr><td><code>fiat-iou</code></td><td>out-of-band fiat payment</td><td><code>USD</code>, <code>EUR</code></td></tr>
+<tr><td><code>chain</code></td><td>an on-chain transaction on the named network — publicly
+verifiable</td><td><code>SATS</code>, <code>TBTC4</code>, <code>TBTC3</code></td></tr>
+<tr><td><code>service</code></td><td>delivery of the named service — serving IS the
+repayment</td><td><code>LLM</code> (inference tokens); provider/model-specific codes minting their
+own URIs</td></tr>
+<tr><td><code>mutual</code></td><td>agreement between the parties</td><td><code>HRS</code> (time
+credit)</td></tr>
+</table></div>
+<div class="note"><span class="lbl">Note — the machine economy</span><p>Service-settled currencies
+make agents natural participants: an inference provider extends a consumer credit denominated in
+tokens; consumption draws it down; <em>serving the tokens is the settlement</em>. An LLM agent
+needs only a did:nostr key and §&nbsp;9's signed transitions — no payment rails at all for
+machine-to-machine credit.</p></div>
 <h3 id="trustlines"><span class="secno">5.3</span>Trustlines<a class="self" href="#trustlines">§</a></h3>
 <p>A trustline is keyed by <code>(creditor, debtor, currency)</code> and carries a single
 <code>limit</code> in micro-units. Rules:</p>
