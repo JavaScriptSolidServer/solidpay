@@ -152,7 +152,7 @@ describe('signed transitions (level 1)', () => {
   it('spec Appendix A.4 vector: byte-exact id and sig', () => {
     const ev = buildTxEvent(PRIV, 'send-payment',
       { to: 'https://n.example/u/carol#me', currency: 'USD', amount: 300 },
-      { created_at: 1785312000, auxRand: '00'.repeat(32) });
+      { created_at: 1785312000, auxRand: '00'.repeat(32), nonce: null });
     assert.strictEqual(ev.pubkey, 'f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9');
     assert.strictEqual(ev.content, '{"amount":300,"currency":"USD","to":"https://n.example/u/carol#me"}');
     assert.strictEqual(ev.id, '0501ad5807e019a8609dbf18120956e4af64f2b5e9186c7033eb7cda7b49e88a');

@@ -434,7 +434,11 @@ there is nothing to re-sign when the chain moves between signing and applying.</
 <h3 id="sig-wire"><span class="secno">9.2</span>Wire format — the transition event<a class="self" href="#sig-wire">§</a></h3>
 <p>A signed transition <strong>is</strong> a nostr event: standard NIP-01 <code>id</code>
 (SHA-256 of the serialization array) and BIP-340 <code>sig</code>
-[<a href="#ref-bip340">BIP340</a>] by the actor's x-only secp256k1 key; <code>tags = []</code>;
+[<a href="#ref-bip340">BIP340</a>] by the actor's x-only secp256k1 key; <code>tags</code> is empty
+or exactly one <code>["nonce", &lt;1–32 hex&gt;]</code> entry — signers <span class="rfc">should</span>
+include a random nonce so that byte-identical <em>intents</em> yield distinct <em>events</em>
+(without one, two legitimate identical payments in the same second share an id: the replay guard
+refuses the second and an auditor reads the pair as a double-apply);
 <code>content</code> = the RFC&nbsp;8785-canonical intent params; <code>kind</code> per this table:</p>
 <div class="tblwrap"><table>
 <tr><th>Kind</th><th>Transition</th><th>Intent (<code>content</code>)</th></tr>

@@ -39,9 +39,11 @@ const NAME_RE = /^[a-z0-9][a-z0-9._-]{1,30}$/;
 const TOKEN_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days
 const b64u = (b) => Buffer.from(b).toString('base64url');
 
-// Public-testnet armor: registrations per source IP per hour (in-memory —
-// resets on restart, which is the right amount of state for a throttle).
-const REGISTER_PER_HOUR = 10;
+// Public-testnet armor: per-IP hourly throttles (in-memory — resets on
+// restart, which is the right amount of state). Env-tunable for operators
+// and for soak testing.
+const REGISTER_PER_HOUR = Number(process.env.SOLIDPAY_REGISTER_PER_HOUR || 10);
+const TX_PER_HOUR = Number(process.env.SOLIDPAY_TX_PER_HOUR || 120);
 
 export function createNode({ dataDir = './data', publicUrl = null, trustProxy = process.env.TRUST_PROXY === '1' } = {}) {
   fs.mkdirSync(dataDir, { recursive: true });
@@ -196,7 +198,7 @@ export function createNode({ dataDir = './data', publicUrl = null, trustProxy = 
     const ip = clientIp(req);
     const now = Date.now();
     const hits = (txHits.get(ip) || []).filter((t) => now - t < 3600_000);
-    if (hits.length >= 120) return false;
+    if (hits.length >= TX_PER_HOUR) return false;
     hits.push(now);
     txHits.set(ip, hits);
     if (txHits.size > 10_000) txHits.clear();
