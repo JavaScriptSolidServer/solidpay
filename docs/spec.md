@@ -1,4 +1,4 @@
-# SolidPay Protocol 1.0
+# SolidPay Protocol 0.0.1
 
 The normative specification lives at **[docs/spec/](https://jss.live/solidpay/docs/spec/)**
 ([source](spec/index.html)) — an Editor's Draft covering conformance classes

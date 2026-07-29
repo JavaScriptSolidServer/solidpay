@@ -1,6 +1,6 @@
 {
   "name": "@solidpay/node",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "SolidPay — Ryan Fugger's original Ripple with Solid ideas: every user is a URI, every transition hash-chained, signatures via did:nostr. A trust-money node in one file, zero dependencies.",
   "type": "module",
   "license": "MIT",
