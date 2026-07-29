@@ -43,7 +43,7 @@ const b64u = (b) => Buffer.from(b).toString('base64url');
 // resets on restart, which is the right amount of state for a throttle).
 const REGISTER_PER_HOUR = 10;
 
-export function createNode({ dataDir = './data', publicUrl = null } = {}) {
+export function createNode({ dataDir = './data', publicUrl = null, trustProxy = process.env.TRUST_PROXY === '1' } = {}) {
   fs.mkdirSync(dataDir, { recursive: true });
 
   // The vendored xlogin widget (lib/xlogin.js, AGPL, © the same author),
@@ -193,8 +193,7 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
   // ---- tx throttle + custodial pubkey map --------------------------------
   const txHits = new Map();
   function txAllowed(req) {
-    const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '?')
-      .split(',')[0].trim();
+    const ip = clientIp(req);
     const now = Date.now();
     const hits = (txHits.get(ip) || []).filter((t) => now - t < 3600_000);
     if (hits.length >= 120) return false;
@@ -211,13 +210,17 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
   }
 
   // ---- register throttle -------------------------------------------------
+  // Client address for throttling. x-forwarded-for is only meaningful when a
+  // reverse proxy WE control sets it (TRUST_PROXY=1); on a direct-port deploy
+  // the header is attacker-controlled and must be ignored, or one client
+  // could rotate past every throttle.
+  const clientIp = (req) => (trustProxy
+    ? String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '?').split(',')[0].trim()
+    : String(req.socket.remoteAddress || '?'));
+
   const regHits = new Map(); // ip → [timestamps]
   function registerAllowed(req) {
-    // Behind the reverse proxy the peer address is the proxy; trust its
-    // x-forwarded-for only in that deployment (it sets one; clients can't
-    // strip it). First hop = original client.
-    const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '?')
-      .split(',')[0].trim();
+    const ip = clientIp(req);
     const now = Date.now();
     const hits = (regHits.get(ip) || []).filter((t) => now - t < 3600_000);
     if (hits.length >= REGISTER_PER_HOUR) return false;
