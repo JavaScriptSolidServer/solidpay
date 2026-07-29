@@ -60,7 +60,7 @@ if (records.some((r) => r.state === state)) {
 // ---- mark it via the blocktrails reference CLI ----------------------------
 let out;
 try {
-  out = execFileSync('npx', ['-y', 'blocktrails@0.0.12', 'mark', state,
+  out = execFileSync('npx', ['-y', 'blocktrails@0.0.11', 'mark', state,
     '--key', key, '--file', trailFile, '--network', 'tbtc4'],
   { encoding: 'utf8', cwd: anchorDir, stdio: ['ignore', 'pipe', 'pipe'] });
 } catch (err) {
