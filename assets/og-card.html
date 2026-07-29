@@ -1,0 +1,55 @@
+<!doctype html><html><head><meta charset="utf-8">
+<!-- Source for assets/og.png — regenerate with:
+     chromium --headless --screenshot=assets/og.png --window-size=1200,630 \
+       --default-background-color=00000000 --hide-scrollbars assets/og-card.html -->
+<style>
+  *{margin:0;box-sizing:border-box}
+  body{width:1200px;height:630px;overflow:hidden;
+    background:linear-gradient(135deg,#0D1413 0%,#122421 55%,#14352C 100%);
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#E5ECEA;
+    display:flex;flex-direction:column;justify-content:space-between;padding:64px 72px 56px}
+  .arcs-bg{position:absolute;right:-140px;top:-160px;opacity:.14}
+  .brand{display:flex;align-items:center;gap:16px;font-size:34px;font-weight:700;letter-spacing:-.01em}
+  .brand .tag{font-size:19px;font-weight:600;color:#3FB59F;background:rgba(63,181,159,.12);
+    border:1.5px solid rgba(63,181,159,.4);border-radius:999px;padding:4px 18px;letter-spacing:.04em}
+  h1{font-size:88px;line-height:1.04;letter-spacing:-.028em;font-weight:750;max-width:980px}
+  h1 .acc{color:#3FB59F}
+  .route{display:flex;align-items:center;gap:14px}
+  .chip{display:flex;align-items:center;gap:12px;background:rgba(229,236,234,.07);
+    border:1.5px solid rgba(229,236,234,.16);border-radius:999px;padding:10px 26px 10px 12px;
+    font-size:26px;font-weight:600}
+  .dot{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
+    color:#fff;font-size:19px;font-weight:700}
+  .arr{color:#3FB59F;font-size:32px;font-weight:700}
+  .foot{display:flex;justify-content:space-between;align-items:baseline;
+    font-size:19.5px;color:#96A6A0;font-weight:500;white-space:nowrap;gap:30px}
+  .foot b{color:#E5ECEA;font-weight:600}
+</style></head><body>
+  <svg class="arcs-bg" width="620" height="620" viewBox="0 0 24 24" fill="none">
+    <circle cx="9" cy="12" r="3.1" stroke="#3FB59F" stroke-width="1.4"/>
+    <path d="M14.5 7.5a6.4 6.4 0 0 1 0 9" stroke="#3FB59F" stroke-width="1.4" stroke-linecap="round"/>
+    <path d="M17.8 5a10.4 10.4 0 0 1 0 14" stroke="#3FB59F" stroke-width="1.4" stroke-linecap="round" opacity=".6"/>
+    <path d="M20.9 2.6a14.6 14.6 0 0 1 0 18.8" stroke="#3FB59F" stroke-width="1.4" stroke-linecap="round" opacity=".3"/>
+  </svg>
+  <div class="brand">
+    <svg width="46" height="46" viewBox="0 0 24 24" fill="none">
+      <circle cx="9" cy="12" r="3.1" stroke="#3FB59F" stroke-width="2"/>
+      <path d="M14.5 7.5a6.4 6.4 0 0 1 0 9" stroke="#3FB59F" stroke-width="2" stroke-linecap="round"/>
+      <path d="M17.8 5a10.4 10.4 0 0 1 0 14" stroke="#3FB59F" stroke-width="2" stroke-linecap="round" opacity=".5"/>
+    </svg>
+    SolidPay <span class="tag">testnet</span>
+  </div>
+  <h1>Money is trust.<br><span class="acc">SolidPay</span> makes it routable.</h1>
+  <div class="route">
+    <span class="chip"><span class="dot" style="background:hsl(210 40% 48%)">A</span>alice</span>
+    <span class="arr">→</span>
+    <span class="chip"><span class="dot" style="background:hsl(96 38% 42%)">B</span>bob</span>
+    <span class="arr">→</span>
+    <span class="chip"><span class="dot" style="background:hsl(275 38% 52%)">C</span>carol</span>
+    <span style="font-size:24px;color:#96A6A0;margin-left:14px">300 USD, routed through trust</span>
+  </div>
+  <div class="foot">
+    <span>The original Ripple (2004) + Solid ideas · <b>every user a URI</b> · <b>nostr signatures</b> · no blockchain</span>
+    <span><b>jss.live/solidpay</b></span>
+  </div>
+</body></html>
