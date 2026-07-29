@@ -14,8 +14,8 @@
       key, or pasted privkey — it's a testnet); hex canonical, npub
       display-only. did:nostr agents are first-class in one graph with
       password agents.
-- [ ] Public testnet instance (pm2 on one of the boxes; `PUBLIC_URL` set)
-- [ ] Seed script for a demo trust network
+- [x] Public testnet instance — http://melvin.me:3480/ (pm2 `solidpay-testnet` on melvin.me, seeded; https + testnet.solidpay.org promotion pending)
+- [x] Seed script for a demo trust network (tools/seed.js, idempotent)
 
 ## v1 — signatures & identity
 - [ ] `sig` on every transition over the JCS bytes (spec §7); node rejects

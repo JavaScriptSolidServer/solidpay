@@ -128,7 +128,8 @@ footer a{color:var(--soft)}
   every transition is hash-chained, and signatures come from keys you hold.
   No blockchain. No token. No bank in the middle.</p>
   <div class="cta">
-    <a class="btn primary" href="https://github.com/JavaScriptSolidServer/solidpay#quickstart">Run a node</a>
+    <a class="btn primary" href="http://melvin.me:3480/">Try the testnet</a>
+    <a class="btn ghost" href="https://github.com/JavaScriptSolidServer/solidpay#quickstart">Run a node</a>
     <a class="btn ghost" href="docs/spec/">Read the spec</a>
   </div>
   <div style="margin-top:44px">
@@ -224,9 +225,9 @@ PUBLIC_URL=https://testnet.solidpay.org node server.js</pre></div>
   <h2>Testnet first, then the hard parts</h2>
   <ul class="road">
     <li><span class="v">v0</span><div><b>Standalone testnet node<span class="now">now</span></b>
-      <p>Trustlines, routed payments, settle, hash-chained ledger, product UI, URIs for users. This release.</p></div></li>
+      <p>Trustlines, routed payments, settle, hash-chained ledger, product UI, URIs for users, nostr sign-in. <a href="http://melvin.me:3480/">Live testnet</a> — play money, real protocol.</p></div></li>
     <li><span class="v">v1</span><div><b>did:nostr signatures</b>
-      <p>Schnorr-signed transitions; sign in with your key; the ledger becomes verify-don't-trust. Spec drafted in <a href="docs/spec/">§7</a>.</p></div></li>
+      <p>Schnorr-signed transitions — the ledger becomes verify-don't-trust. Nostr <em>sign-in</em> already shipped in v0; drafted in <a href="docs/spec/#signatures">spec §9</a>.</p></div></li>
     <li><span class="v">v2</span><div><b>Federation</b>
       <p>Cross-node routing over signed transitions — hold/commit or relay gossip. Multiple testnets, then peering.</p></div></li>
     <li><span class="v">v3</span><div><b>Anchoring &amp; beyond</b>
