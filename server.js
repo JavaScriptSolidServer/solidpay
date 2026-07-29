@@ -264,7 +264,12 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
 }
 
 // ---- CLI ------------------------------------------------------------------
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Entry detection must survive pm2: under its fork wrapper argv[1] is
+// ProcessContainerFork.js, but pm2 exposes the real script as pm_exec_path.
+const self = fileURLToPath(import.meta.url);
+const entry = [process.argv[1], process.env.pm_exec_path]
+  .some((p) => { try { return p && path.resolve(p) === self; } catch { return false; } });
+if (entry) {
   const node = createNode({
     dataDir: process.env.DATA || './data',
     publicUrl: process.env.PUBLIC_URL || null,
