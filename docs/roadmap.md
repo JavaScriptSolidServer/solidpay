@@ -18,7 +18,7 @@
 - [x] Seed script for a demo trust network (tools/seed.js, idempotent)
 
 ## v1 — signatures & identity
-- [ ] `sig` on every transition over the JCS bytes (spec §7); node rejects
+- [ ] `sig` on every transition over the JCS bytes (spec §9); node rejects
       unverifiable transitions — verify-don't-trust
 - [ ] WebID / external-URI agents alongside node-local `/u/name#me`
 - [ ] Privacy: per-agent graph views (own lines + paths that touch you)
