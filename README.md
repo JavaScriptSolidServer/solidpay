@@ -8,7 +8,7 @@ with Solid ideas: **every user is a URI**, **every transition is
 hash-chained**, and (v1) **signatures via did:nostr**. No blockchain, no
 token, no consensus, no bank in the middle.
 
-Landing page: <https://javascriptsolidserver.github.io/solidpay/> ·
+Landing page: <https://jss.live/solidpay/> ·
 Spec: [docs/spec.md](docs/spec.md) · Roadmap: [docs/roadmap.md](docs/roadmap.md)
 
 ## Quickstart
