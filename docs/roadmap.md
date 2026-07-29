@@ -9,12 +9,15 @@
 - [x] Product UI: sign-in/signup, overview tiles, pay with live route
       preview, trustline management, chain-verified activity feed
 - [x] 16 tests including a full-HTTP integration run and restart persistence
+- [x] did:nostr sign-in — NIP-98 signed requests verified server-side
+      (BIP-340 via @noble/curves); xlogin widget in the UI (extension, guest
+      key, or pasted privkey — it's a testnet); hex canonical, npub
+      display-only. did:nostr agents are first-class in one graph with
+      password agents.
 - [ ] Public testnet instance (pm2 on one of the boxes; `PUBLIC_URL` set)
 - [ ] Seed script for a demo trust network
 
 ## v1 — signatures & identity
-
-- [ ] did:nostr sign-in (BIP340 schnorr; hex canonical, npub display-only)
 - [ ] `sig` on every transition over the JCS bytes (spec §7); node rejects
       unverifiable transitions — verify-don't-trust
 - [ ] WebID / external-URI agents alongside node-local `/u/name#me`

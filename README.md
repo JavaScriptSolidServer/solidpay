@@ -20,7 +20,7 @@ node server.js
 # solidpay node listening on port 3480 → open http://localhost:3480
 ```
 
-Zero dependencies — plain Node.js ≥ 20. Behind a proxy:
+One dependency — [`@noble/curves`](https://github.com/paulmillr/noble-curves) for BIP-340 signature verification — on plain Node.js ≥ 20. Behind a proxy:
 
 ```bash
 PUBLIC_URL=https://testnet.solidpay.org PORT=3480 DATA=/var/solidpay node server.js
@@ -49,7 +49,7 @@ micro-units; no float drift.
 ## Repo
 
 ```
-server.js         the node: HTTP API + accounts + UI serving (zero deps)
+server.js         the node: HTTP API + accounts + nostr auth + UI serving
 lib/engine.js     the ledger engine (pure model + transitions)
 lib/ui.js         the product UI (one server-rendered document)
 docs/spec/        the protocol spec (Editor's Draft, HTML) + pointer md

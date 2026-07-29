@@ -165,10 +165,11 @@ footer a{color:var(--soft)}
       <p>Every transition is hash-chained — <code>seq</code>, <code>prev</code>, SHA-256 over the
       RFC 8785-canonical entry. Anyone can re-derive the whole chain from
       <code>/api/log</code>; the UI shows the verification badge live.</p></div>
-    <div class="card"><h3><span class="ic">✎</span>Signatures, not sessions <small style="color:var(--warn);font-weight:600">v1</small></h3>
-      <p>Next: each transition schnorr-signed by the actor's <code>did:nostr</code> key over the same
-      canonical bytes. The server drops from authority to coordinator — verify, don't trust. A signed
-      transition is shaped like a nostr event, on purpose.</p></div>
+    <div class="card"><h3><span class="ic">✎</span>Signatures, not sessions</h3>
+      <p><strong>Live now:</strong> sign in with your nostr key — every request is NIP-98-signed and
+      your agent is <code>did:nostr:&lt;pubkey&gt;</code>, no registration. <strong>Next (v1):</strong>
+      the transitions themselves schnorr-signed over the same canonical bytes — the server drops from
+      authority to coordinator. A signed transition is shaped like a nostr event, on purpose.</p></div>
     <div class="card"><h3><span class="ic">⇄</span>A network of nodes <small style="color:var(--warn);font-weight:600">v2</small></h3>
       <p>Signed transitions make federation possible: routes that cross nodes, relayed and verified
       anywhere — the part that was genuinely hard in 2004. Chain tips can anchor to Bitcoin via
@@ -178,7 +179,7 @@ footer a{color:var(--soft)}
 
 <section id="run"><div class="wrap">
   <p class="eyebrow">Run a node</p>
-  <h2>A testnet in one file, zero dependencies</h2>
+  <h2>A testnet in one file, one dependency</h2>
   <p class="lead">The whole node — engine, API, product UI — is plain Node.js. Clone it, run it,
   open the app, and start a trust network with your friends. Testnet: play money, real protocol.</p>
   <div class="cards c2">

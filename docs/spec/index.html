@@ -415,10 +415,23 @@ Tracked on GitHub.</p></div>
 
 <h2 id="http"><span class="secno">10.</span>HTTP API<a class="self" href="#http">§</a></h2>
 <p>A node exposing HTTP <span class="rfc">must</span> implement the following resources. Writes
-require <code>Authorization: Bearer</code> (level&nbsp;0: node-issued token; level&nbsp;1: the
-signature within the body makes the bearer optional). All responses are JSON; errors are
-<code>{"error": string}</code> with the status codes of §&nbsp;7.2. CORS
-<span class="rfc">should</span> be permissive on reads.</p>
+require an <code>Authorization</code> header in one of two schemes, and a node
+<span class="rfc">must</span> accept both:</p>
+<ul>
+<li><code>Bearer &lt;token&gt;</code> — a node-issued token for a node-local account
+(<code>/api/register</code>, <code>/api/login</code>).</li>
+<li><code>Nostr &lt;base64(event)&gt;</code> — a NIP-98 [<a href="#ref-nip98">NIP-98</a>] signed
+kind-27235 event authenticating the actor as <code>did:nostr:&lt;pubkey&gt;</code> with no prior
+registration. The node <span class="rfc">must</span> verify: the BIP-340 signature over the NIP-01
+event id; <code>u</code> equals the request's absolute URL and <code>method</code> its verb;
+<code>created_at</code> within ±60&nbsp;s; and the <code>payload</code> tag equals
+SHA-256 of the exact body bytes whenever a body is present (a body-carrying request
+<span class="rfc">must not</span> verify without a payload tag, or a signed bodyless header could
+be replayed onto a write). This is signed <em>authentication</em>; signed <em>transitions</em>
+remain level&nbsp;1 (<a href="#signatures">§&nbsp;9</a>).</li>
+</ul>
+<p>All responses are JSON; errors are <code>{"error": string}</code> with the status codes of
+§&nbsp;7.2. CORS <span class="rfc">should</span> be permissive on reads.</p>
 <div class="tblwrap"><table>
 <tr><th>Method &amp; path</th><th>Body / query</th><th>Success</th></tr>
 <tr><td><code>POST /api/register</code></td><td><code>{username, password}</code></td>
@@ -552,6 +565,8 @@ for a Decentralized Currency Network Protocol</em>, 2004 ·
 1.0: Web Identity and Discovery</a></li>
 <li id="ref-nip01">[NIP-01] — <a href="https://github.com/nostr-protocol/nips/blob/master/01.md">Nostr:
 Basic protocol flow description</a></li>
+<li id="ref-nip98">[NIP-98] — <a href="https://github.com/nostr-protocol/nips/blob/master/98.md">Nostr:
+HTTP Auth</a></li>
 <li>[TRUSTLINE-V1] — <a href="https://github.com/webcontracts/webcontracts.github.io/issues/4">trustline.v1
 profile — Ryan Fugger's original Ripple as a web contract</a></li>
 <li>[BLOCKTRAILS] — <a href="https://blocktrails.org">Blocktrails: Bitcoin-anchored history</a>

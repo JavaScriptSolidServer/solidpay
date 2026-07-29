@@ -24,8 +24,12 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { Ledger, LedgerError, normalizeAgent } from './lib/engine.js';
 import { uiPage } from './lib/ui.js';
+import { verifyNip98 } from './lib/nip98.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const NAME_RE = /^[a-z0-9][a-z0-9._-]{1,30}$/;
 const TOKEN_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days
@@ -33,6 +37,10 @@ const b64u = (b) => Buffer.from(b).toString('base64url');
 
 export function createNode({ dataDir = './data', publicUrl = null } = {}) {
   fs.mkdirSync(dataDir, { recursive: true });
+
+  // The vendored xlogin widget (lib/xlogin.js, AGPL, © the same author),
+  // served byte-identical at /xlogin.js. Immutable for a running server.
+  const xloginSrc = fs.readFileSync(path.join(__dirname, 'lib', 'xlogin.js'), 'utf8');
 
   // ---- persistent bits ---------------------------------------------------
   const stateFile = path.join(dataDir, 'state.json');
@@ -80,9 +88,17 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
       return exp > Date.now() ? normalizeAgent(agent) : null;
     } catch { return null; }
   }
-  const agentOf = (req) => {
+  /**
+   * Resolve the acting agent from either auth scheme:
+   *   Bearer <hmac token>          → node-local account (agent baked in)
+   *   Nostr  <base64 NIP-98 event> → did:nostr:<hex>, schnorr-verified
+   * NIP-98 signs the absolute URL + method (+ body hash), so both are needed.
+   */
+  const agentOf = (req, url, rawBody = null) => {
     const h = req.headers.authorization || '';
-    return h.startsWith('Bearer ') ? verifyToken(h.slice(7)) : null;
+    if (h.startsWith('Bearer ')) return verifyToken(h.slice(7));
+    if (h.startsWith('Nostr ')) return verifyNip98(h, url.href, req.method, rawBody);
+    return null;
   };
 
   // ---- http plumbing -----------------------------------------------------
@@ -96,21 +112,19 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
     res.writeHead(code, { ...CORS, 'content-type': type, 'content-length': buf.length });
     res.end(buf);
   };
-  const readJson = (req) => new Promise((resolve) => {
+  /** Buffer the body (≤ 64 KiB) and return { raw, json } — raw is kept for
+   *  NIP-98's payload-tag verification, which hashes the exact wire bytes. */
+  const readBody = (req) => new Promise((resolve) => {
     let size = 0; const chunks = [];
     req.on('data', (c) => { size += c.length; if (size <= 65536) chunks.push(c); });
     req.on('end', () => {
-      if (size > 65536) return resolve(null);
-      try { resolve(JSON.parse(Buffer.concat(chunks).toString() || '{}')); }
-      catch { resolve(null); }
+      if (size > 65536) return resolve({ raw: null, json: null });
+      const raw = Buffer.concat(chunks).toString();
+      try { resolve({ raw, json: JSON.parse(raw || '{}') }); }
+      catch { resolve({ raw, json: null }); }
     });
-    req.on('error', () => resolve(null));
+    req.on('error', () => resolve({ raw: null, json: null }));
   });
-  const requireAgent = (req, res) => {
-    const agent = agentOf(req);
-    if (!agent) send(res, 401, { error: 'authentication required' });
-    return agent;
-  };
 
   // ---- request handler ---------------------------------------------------
   async function handle(req, res) {
@@ -124,6 +138,9 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
       // ---- app UI + profile URIs ----
       if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
         return send(res, 200, uiPage(), 'text/html; charset=utf-8');
+      }
+      if (req.method === 'GET' && p === '/xlogin.js') {
+        return send(res, 200, xloginSrc, 'application/javascript; charset=utf-8');
       }
       const prof = /^\/u\/([a-z0-9._-]+)$/.exec(p);
       if (req.method === 'GET' && prof) {
@@ -140,7 +157,7 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
 
       // ---- auth ----
       if (req.method === 'POST' && (p === '/api/register' || p === '/api/login')) {
-        const body = await readJson(req);
+        const { json: body } = await readBody(req);
         if (!body) return send(res, 400, { error: 'invalid JSON body' });
         const name = String(body.username || '').toLowerCase();
         const password = String(body.password || '');
@@ -162,7 +179,7 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
       }
 
       // ---- reads ----
-      if (req.method === 'GET' && p === '/api/whoami') return send(res, 200, { agent: agentOf(req) });
+      if (req.method === 'GET' && p === '/api/whoami') return send(res, 200, { agent: agentOf(req, url) });
       if (req.method === 'GET' && p === '/api/graph') return send(res, 200, ledger.graph());
       if (req.method === 'GET' && p === '/api/balances') {
         return send(res, 200, ledger.balancesFor(url.searchParams.get('agent')));
@@ -177,10 +194,12 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
       if (req.method === 'GET' && p === '/api/log/verify') return send(res, 200, ledger.verifyLog());
 
       // ---- writes (authenticated) ----
+      // Body is read BEFORE auth: NIP-98's payload tag is a hash of the exact
+      // wire bytes, so verification needs the raw body in hand.
       if (req.method === 'POST' && p.startsWith('/api/')) {
-        const agent = requireAgent(req, res);
-        if (!agent) return;
-        const body = await readJson(req);
+        const { raw, json: body } = await readBody(req);
+        const agent = agentOf(req, url, raw);
+        if (!agent) return send(res, 401, { error: 'authentication required' });
         if (!body) return send(res, 400, { error: 'invalid JSON body' });
         if (p === '/api/trustlines') {
           const out = ledger.setTrustline(agent, body.peer, body.currency, body.limit);
