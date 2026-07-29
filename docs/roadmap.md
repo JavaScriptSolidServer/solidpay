@@ -18,8 +18,12 @@
 - [x] Seed script for a demo trust network (tools/seed.js, idempotent)
 
 ## v1 — signatures & identity
-- [ ] `sig` on every transition over the JCS bytes (spec §9); node rejects
-      unverifiable transitions — verify-don't-trust
+- [x] Signed transitions (spec §9) — every transition is a nostr event
+      (kinds 8801–8804, content = RFC 8785 canonical intent, BIP-340 sig)
+      submitted at `POST /api/tx`; the signature IS the authentication.
+      did:nostr agents self-sign (NIP-07/xlogin in the UI); node-local
+      accounts are custodially signed with disclosed custody; `log/verify`
+      audits authorship over the whole chain — verify-don't-trust.
 - [ ] WebID / external-URI agents alongside node-local `/u/name#me`
 - [ ] Privacy: per-agent graph views (own lines + paths that touch you)
 - [ ] Append-log storage (NDJSON) replacing whole-file rewrite

@@ -25,9 +25,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { Ledger, LedgerError, normalizeAgent } from './lib/engine.js';
+import { Ledger, LedgerError, normalizeAgent, CUR_RE } from './lib/engine.js';
 import { uiPage } from './lib/ui.js';
 import { verifyNip98 } from './lib/nip98.js';
+import { buildTxEvent, verifyTxEvent, verifyEntryEvent, intentOf, FRESH_SECS } from './lib/tx.js';
+import { schnorr } from '@noble/curves/secp256k1';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -60,6 +62,33 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
   try { accounts = JSON.parse(fs.readFileSync(accountsFile, 'utf8')); } catch { accounts = {}; }
   const saveAccounts = () => fs.writeFileSync(accountsFile, JSON.stringify(accounts, null, 2));
 
+  // Custodial signing keys for node-local accounts (level 1): the node holds
+  // a secp256k1 key per account and signs their transitions, so the whole
+  // log verifies uniformly. Custody is disclosed in the profile document —
+  // did:nostr agents hold their own keys and never appear in this file.
+  const keysFile = path.join(dataDir, 'keys.json');
+  let custodialKeys;
+  try { custodialKeys = JSON.parse(fs.readFileSync(keysFile, 'utf8')); } catch { custodialKeys = {}; }
+  const saveKeys = () => fs.writeFileSync(keysFile, JSON.stringify(custodialKeys, null, 2), { mode: 0o600 });
+  function custodialPriv(name) {
+    if (!custodialKeys[name]) {
+      custodialKeys[name] = crypto.randomBytes(32).toString('hex');
+      saveKeys();
+    }
+    return custodialKeys[name];
+  }
+  const custodialPub = (name) => (custodialKeys[name]
+    ? Buffer.from(schnorr.getPublicKey(custodialKeys[name])).toString('hex') : null);
+  /** actor URI → published pubkey (custodial accounts only; DIDs self-carry). */
+  function keyOfActor(actor) {
+    const m = /\/u\/([a-z0-9._-]+)#me$/.exec(String(actor || ''));
+    return m ? custodialPub(m[1]) : null;
+  }
+  const nameOfAgent = (agent) => {
+    const m = /\/u\/([a-z0-9._-]+)#me$/.exec(String(agent || ''));
+    return m && accounts[m[1]] ? m[1] : null;
+  };
+
   let state;
   try { state = JSON.parse(fs.readFileSync(stateFile, 'utf8')); } catch { state = undefined; }
   const ledger = new Ledger({
@@ -70,6 +99,49 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
       fs.renameSync(tmp, stateFile);
     },
   });
+
+  // Replay guard: applied event ids within the freshness window. Rebuilt
+  // from the log tail on boot (only fresh ids can replay — older events
+  // fail the created_at check on their own).
+  const seenEvents = new Map(); // id → created_at (seconds)
+  {
+    const cutoff = Math.floor(Date.now() / 1000) - 2 * FRESH_SECS;
+    for (const e of ledger.state.log.slice(-500)) {
+      if (e.event?.id && e.event.created_at >= cutoff) seenEvents.set(e.event.id, e.event.created_at);
+    }
+  }
+  function pruneSeen() {
+    if (seenEvents.size > 5000) {
+      const cutoff = Math.floor(Date.now() / 1000) - 2 * FRESH_SECS;
+      for (const [id, t] of seenEvents) if (t < cutoff) seenEvents.delete(id);
+    }
+  }
+
+  /** A signed intent must arrive in canonical form — the node validates
+   *  instead of rewriting (it cannot rewrite signed bytes). */
+  function intentCanonError(type, intent) {
+    const uriFields = type === 'send-payment' ? ['to'] : ['peer'];
+    for (const f of uriFields) {
+      const v = intent[f];
+      if (typeof v !== 'string' || !v) return `${f} required`;
+      if (normalizeAgent(v) !== v) return `${f} must be the canonical agent spelling`;
+    }
+    if (typeof intent.currency !== 'string' || !CUR_RE.test(intent.currency)) {
+      return 'currency must be uppercase [A-Z0-9]{1,12} (signed intents are not rewritten)';
+    }
+    return null;
+  }
+
+  /** Dispatch a verified signed transition to the ledger. */
+  function applySigned(actor, type, intent, ev) {
+    switch (type) {
+      case 'set-trustline': return ledger.setTrustline(actor, intent.peer, intent.currency, intent.limit, ev);
+      case 'remove-trustline': return ledger.removeTrustline(actor, intent.peer, intent.currency, ev);
+      case 'send-payment': return ledger.pay(actor, intent.to, intent.currency, intent.amount, ev);
+      case 'settle': return ledger.settle(actor, intent.peer, intent.currency, intent.amount, ev);
+      default: throw new LedgerError(400, `unknown transition type ${type}`);
+    }
+  }
 
   // ---- identity ----------------------------------------------------------
   let origin = publicUrl ? String(publicUrl).replace(/\/$/, '') : null;
@@ -167,12 +239,20 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
       if (req.method === 'GET' && prof) {
         const name = prof[1];
         if (!accounts[name]) return send(res, 404, { error: 'no such agent' });
+        const pub = custodialPub(name);
         return send(res, 200, {
           '@context': { solidpay: 'https://solidpay.org/ns#' },
           '@id': agentUri(name),
           name,
           'solidpay:node': origin,
           'solidpay:since': accounts[name].created,
+          // Level 1: the key this account's transitions verify against.
+          // CUSTODIAL — the node holds it; did:nostr agents hold their own.
+          ...(pub ? {
+            pubkey: pub,
+            alsoKnownAs: [`did:nostr:${pub}`],
+            'solidpay:keyCustody': 'node',
+          } : {}),
         });
       }
 
@@ -192,6 +272,7 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
           const salt = b64u(crypto.randomBytes(16));
           accounts[name] = { salt, hash: hashPassword(password, salt), created: new Date().toISOString() };
           saveAccounts();
+          custodialPriv(name); // mint the signing key up front (level 1)
         } else {
           const acct = accounts[name];
           if (!acct || hashPassword(password, acct.salt) !== acct.hash) {
@@ -215,9 +296,47 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
       if (req.method === 'GET' && p === '/api/log') {
         return send(res, 200, ledger.log(url.searchParams.get('limit')));
       }
-      if (req.method === 'GET' && p === '/api/log/verify') return send(res, 200, ledger.verifyLog());
+      if (req.method === 'GET' && p === '/api/log/verify') {
+        const chain = ledger.verifyLog();
+        // Authorship audit on top of the chain audit (spec § 8.2 step 4):
+        // every entry's embedded event must verify against the actor's key.
+        const signatures = { signed: 0, unsigned: 0, invalid: 0 };
+        const problems = [];
+        for (const e of ledger.state.log) {
+          const v = verifyEntryEvent(e, keyOfActor);
+          if (!v.signed) signatures.unsigned += 1;
+          else if (v.valid) signatures.signed += 1;
+          else { signatures.invalid += 1; problems.push({ seq: e.seq, error: v.error }); }
+        }
+        return send(res, 200, {
+          ...chain,
+          valid: chain.valid && signatures.invalid === 0,
+          signatures,
+          ...(problems.length ? { problems: problems.slice(0, 10) } : {}),
+        });
+      }
 
-      // ---- writes (authenticated) ----
+      // ---- signed transitions (level 1): POST /api/tx ----
+      // The body IS a signed nostr event (kinds 8801-8804, content = the
+      // RFC 8785-canonical intent). The signature is the authentication —
+      // no Authorization header involved. See docs/spec/ § 9.
+      if (req.method === 'POST' && p === '/api/tx') {
+        const { json: ev } = await readBody(req);
+        if (!ev) return send(res, 400, { error: 'invalid JSON body' });
+        const v = verifyTxEvent(ev);
+        if (v.error) return send(res, 401, { error: `invalid transition event: ${v.error}` });
+        // Signatures cover exact bytes, so the node validates canonical form
+        // rather than rewriting: agent URIs canonical, currency uppercase.
+        const canonErr = intentCanonError(v.type, v.intent);
+        if (canonErr) return send(res, 400, { error: canonErr });
+        if (seenEvents.has(ev.id)) return send(res, 409, { error: 'event already applied (replay)' });
+        const out = applySigned(v.actor, v.type, v.intent, ev);
+        seenEvents.set(ev.id, ev.created_at);
+        pruneSeen();
+        return send(res, out.created === true ? 201 : 200, out);
+      }
+
+      // ---- writes (authenticated; custodially signed) ----
       // Body is read BEFORE auth: NIP-98's payload tag is a hash of the exact
       // wire bytes, so verification needs the raw body in hand.
       if (req.method === 'POST' && p.startsWith('/api/')) {
@@ -225,18 +344,30 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
         const agent = agentOf(req, url, raw);
         if (!agent) return send(res, 401, { error: 'authentication required' });
         if (!body) return send(res, 400, { error: 'invalid JSON body' });
+        // did:nostr agents hold their own keys — the node cannot sign for
+        // them, and level 1 refuses to write unsigned entries on their
+        // behalf. Their lane is the signed one.
+        if (agent.startsWith('did:')) {
+          return send(res, 400, { error: 'did:* agents submit signed transitions: POST /api/tx (see docs/spec/ § 9)' });
+        }
+        const name = nameOfAgent(agent);
+        const sign = (type, intent) => (name ? buildTxEvent(custodialPriv(name), type, intent) : null);
         if (p === '/api/trustlines') {
-          const out = ledger.setTrustline(agent, body.peer, body.currency, body.limit);
+          const intent = { peer: normalizeAgent(String(body.peer ?? '')), currency: String(body.currency ?? '').toUpperCase(), limit: body.limit };
+          const out = ledger.setTrustline(agent, intent.peer, intent.currency, intent.limit, sign('set-trustline', intent));
           return send(res, out.created ? 201 : 200, out);
         }
         if (p === '/api/trustlines/remove') {
-          return send(res, 200, ledger.removeTrustline(agent, body.peer, body.currency));
+          const intent = { peer: normalizeAgent(String(body.peer ?? '')), currency: String(body.currency ?? '').toUpperCase() };
+          return send(res, 200, ledger.removeTrustline(agent, intent.peer, intent.currency, sign('remove-trustline', intent)));
         }
         if (p === '/api/payments') {
-          return send(res, 200, ledger.pay(agent, body.to, body.currency, body.amount));
+          const intent = { to: normalizeAgent(String(body.to ?? '')), currency: String(body.currency ?? '').toUpperCase(), amount: body.amount };
+          return send(res, 200, ledger.pay(agent, intent.to, intent.currency, intent.amount, sign('send-payment', intent)));
         }
         if (p === '/api/settle') {
-          return send(res, 200, ledger.settle(agent, body.peer, body.currency, body.amount));
+          const intent = { peer: normalizeAgent(String(body.peer ?? '')), currency: String(body.currency ?? '').toUpperCase(), amount: body.amount };
+          return send(res, 200, ledger.settle(agent, intent.peer, intent.currency, intent.amount, sign('settle', intent)));
         }
       }
 

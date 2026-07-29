@@ -41,6 +41,11 @@ route previews live before you commit.
 - **Settle** — IOUs clear out-of-band; the creditor records repayment.
 - **Ledger** — every transition hash-chained (RFC 8785 canonical JSON +
   SHA-256); `GET /api/log/verify` re-derives the whole chain, and so can you.
+- **Signed transitions (level 1)** — a transition is a nostr event (kinds
+  8801–8804, content = canonical intent, BIP-340 sig) submitted at
+  `POST /api/tx`; the signature is the authentication. did:nostr agents
+  self-sign; password accounts are custodially signed with custody disclosed
+  in their profile document. `log/verify` audits authorship end to end.
 
 Books are one **signed** number per pair+currency — the two directions are
 the same number negated, so they cannot desync. All arithmetic is integer

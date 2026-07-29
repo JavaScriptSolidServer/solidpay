@@ -125,8 +125,9 @@ actor, making the ledger verifiable without trusting the node that holds it.</p>
 
 <h2 id="sotd">Status of This Document<a class="self" href="#sotd">§</a></h2>
 <p>This is an Editor's Draft, published for implementation and review. It specifies protocol
-<strong>level&nbsp;0</strong> (single-node operation) normatively and drafts protocol
-<strong>level&nbsp;1</strong> (signatures) in <a href="#signatures">§&nbsp;9</a>. Federation
+<strong>level&nbsp;0</strong> (single-node operation) and protocol <strong>level&nbsp;1</strong>
+(signed transitions, <a href="#signatures">§&nbsp;9</a>) normatively; the reference implementation
+implements both. Federation
 (level&nbsp;2) is out of scope for this document and tracked in the
 <a href="../roadmap.md">roadmap</a>. The <a href="https://github.com/JavaScriptSolidServer/solidpay">reference
 implementation</a> passes the <a href="#vectors">test vectors in Appendix&nbsp;A</a>.</p>
@@ -338,6 +339,7 @@ constraints the payment <span class="rfc">must</span> fail with 404 and
   "actor":  "&lt;agent URI&gt;",              <span class="c">// the authenticated agent</span>
   "type":   "send-payment",
   "params": { … },                      <span class="c">// per-type, see below; amounts as decimals</span>
+  "event":  { … },                      <span class="c">// level 1: the actor's signed intent (§ 9)</span>
   "hash":   "sha256:…"                  <span class="c">// § 8.1</span>
 }</code></pre>
 <p>Validation and state mutation <span class="rfc">must</span> be atomic with the log append: either
@@ -374,8 +376,8 @@ codes above, plus 401 for unauthenticated writes and 400 for unparseable bodies.
 <h2 id="log"><span class="secno">8.</span>The transition log<a class="self" href="#log">§</a></h2>
 <h3 id="entry-hash"><span class="secno">8.1</span>Entry hash<a class="self" href="#entry-hash">§</a></h3>
 <pre><code>hash = "sha256:" ‖ lowerhex( SHA-256( UTF8( JCS( entry \ {hash, sig} ) ) ) )</code></pre>
-<p>The entry's own <code>hash</code> and (level&nbsp;1) <code>sig</code> members are excluded from
-the hashed bytes; every other member is included. <code>prev</code> is the previous entry's
+<p>The entry's own <code>hash</code> member is excluded from the hashed bytes; every other member —
+including the level-1 <code>event</code> — is included. <code>prev</code> is the previous entry's
 <code>hash</code> (<code>null</code> for <code>seq&nbsp;1</code>), so each hash transitively commits
 to the entire prior history. The newest hash is the log's <a href="#dfn-tip">tip</a>.</p>
 <h3 id="verification"><span class="secno">8.2</span>Chain verification<a class="self" href="#verification">§</a></h3>
@@ -392,37 +394,78 @@ first).</li>
 <span class="rfc">may</span> additionally replay the log through §&nbsp;7 and compare the resulting
 state to the node's reported state; any divergence proves misbehaviour.</p>
 
-<h2 id="signatures"><span class="secno">9.</span>Signatures — protocol level 1
-<span class="pill" style="vertical-align:middle;margin-left:8px">Draft</span><a class="self" href="#signatures">§</a></h2>
+<h2 id="signatures"><span class="secno">9.</span>Signed transitions — protocol level 1<a class="self" href="#signatures">§</a></h2>
 <h3 id="sig-model"><span class="secno">9.1</span>Model<a class="self" href="#sig-model">§</a></h3>
 <p>Level&nbsp;0 trusts the node to attribute <code>actor</code> honestly. Level&nbsp;1 removes that
-trust: each entry gains a <code>sig</code> member — a BIP-340 Schnorr signature
-[<a href="#ref-bip340">BIP340</a>] over <code>SHA-256(UTF8(JCS(entry \ {hash, sig})))</code> — the
-exact bytes the hash covers — made with the secp256k1 key bound to the actor
-(§&nbsp;9.2). A level-1 node <span class="rfc">must</span> reject any transition whose signature
-does not verify — including transitions it originates itself. The node thereby becomes a
-coordinator, not an authority.</p>
-<h3 id="sig-binding"><span class="secno">9.2</span>Key binding<a class="self" href="#sig-binding">§</a></h3>
+trust: every applied transition embeds an <code>event</code> — a signed statement of the actor's
+<em>intent</em>, in the shape of a nostr event [<a href="#ref-nip01">NIP-01</a>]. The actor signs
+<strong>intent, not chain position</strong>: <em>what</em> they authorize
+(<code>{to, currency, amount}</code>), never <code>seq</code>/<code>prev</code>/<code>path</code>.
+The split of proofs is deliberate:</p>
 <ul>
-<li><code>did:nostr:&lt;hex&gt;</code> agents: the DID <em>is</em> the x-only public key.</li>
-<li>Node-local and WebID agents: the profile document <span class="rfc">must</span> carry a
-<code>verificationMethod</code> whose public key the signature verifies against.</li>
+<li><strong>ordering</strong> is the node's assertion, proven by the hash chain (§&nbsp;8);</li>
+<li><strong>authorship</strong> is the actor's, proven by the event signature;</li>
+<li><strong>routing</strong> is the network's business, authorized by the intermediaries' own
+signed trustlines — Fugger's consent model, made cryptographic.</li>
 </ul>
-<h3 id="sig-nostr"><span class="secno">9.3</span>Nostr event mapping<a class="self" href="#sig-nostr">§</a></h3>
-<p>A signed transition maps losslessly onto a nostr event [<a href="#ref-nip01">NIP-01</a>]
-(<code>pubkey</code> ← actor key, <code>created_at</code> ← <code>ts</code>, <code>kind</code> ←
-per-type kind number, <code>content</code> ← JCS entry, <code>sig</code> ← <code>sig</code>). Kind
-numbers will be registered before level&nbsp;1 ships. This mapping is deliberate: it lets relays
-carry ledger history, which is the transport for federation (level&nbsp;2).</p>
+<p>This is also what makes signing race-free for client-held keys: an intent is self-contained, so
+there is nothing to re-sign when the chain moves between signing and applying.</p>
+<h3 id="sig-wire"><span class="secno">9.2</span>Wire format — the transition event<a class="self" href="#sig-wire">§</a></h3>
+<p>A signed transition <strong>is</strong> a nostr event: standard NIP-01 <code>id</code>
+(SHA-256 of the serialization array) and BIP-340 <code>sig</code>
+[<a href="#ref-bip340">BIP340</a>] by the actor's x-only secp256k1 key; <code>tags = []</code>;
+<code>content</code> = the RFC&nbsp;8785-canonical intent params; <code>kind</code> per this table:</p>
+<div class="tblwrap"><table>
+<tr><th>Kind</th><th>Transition</th><th>Intent (<code>content</code>)</th></tr>
+<tr><td><code>8801</code></td><td>set-trustline<br><small>(create vs update derived by the node)</small></td>
+<td><code>{peer, currency, limit}</code></td></tr>
+<tr><td><code>8802</code></td><td>remove-trustline</td><td><code>{peer, currency}</code></td></tr>
+<tr><td><code>8803</code></td><td>send-payment</td><td><code>{to, currency, amount}</code></td></tr>
+<tr><td><code>8804</code></td><td>settle</td><td><code>{peer, currency, amount}</code></td></tr>
+</table></div>
+<p>Because it is a plain nostr event, any NIP-07 signer signs transitions natively, and a
+transition can be carried by nostr relays as-is — the transport for federation (level&nbsp;2).
+Rules a node <span class="rfc">must</span> enforce on receipt (<code>POST /api/tx</code>):</p>
+<ol class="algo">
+<li><code>content</code> parses as a JSON object AND equals its own canonical serialization —
+byte-different spellings of one meaning are refused, or replay ids could be sidestepped.</li>
+<li>Intent values arrive pre-normalized (canonical agent spelling per §&nbsp;4.2, uppercase
+currency): signed bytes are validated, <span class="rfc">never</span> rewritten (400 otherwise).</li>
+<li><code>created_at</code> within ±120&nbsp;s of node time (freshness).</li>
+<li>An event <code>id</code> already applied is refused with 409 (replay). The freshness window
+bounds the id set a node must remember.</li>
+<li><code>id</code> recomputes and <code>sig</code> verifies; the actor is
+<code>did:nostr:&lt;pubkey&gt;</code>, or the account whose published key matches (§&nbsp;9.3).</li>
+</ol>
+<p>The verified event is embedded in the resulting log entry as <code>event</code> (covered by the
+entry hash), and the entry's response is identical to the legacy lanes'. The signature is the
+authentication — <code>/api/tx</code> takes no <code>Authorization</code> header.</p>
+<h3 id="sig-binding"><span class="secno">9.3</span>Key binding &amp; custody<a class="self" href="#sig-binding">§</a></h3>
+<ul>
+<li><code>did:nostr:&lt;hex&gt;</code> agents: the DID <em>is</em> the x-only public key. The agent
+holds it; the node never sees it. These agents write <em>only</em> through
+<code>/api/tx</code> — a level-1 node <span class="rfc">must</span> refuse to fabricate entries for
+keys it does not hold (the legacy lanes answer 400).</li>
+<li>Node-local (password) agents: the node mints and holds a secp256k1 key per account and signs
+their transitions <em>custodially</em>, so the whole log verifies uniformly. Custody
+<span class="rfc">must</span> be disclosed: the profile document carries <code>pubkey</code>,
+<code>alsoKnownAs: ["did:nostr:&lt;pubkey&gt;"]</code>, and
+<code>"solidpay:keyCustody": "node"</code>.</li>
+</ul>
 <h3 id="sig-verify"><span class="secno">9.4</span>Verification<a class="self" href="#sig-verify">§</a></h3>
-<p>An auditor verifying a level-1 entry <span class="rfc">must</span>: resolve the actor's key per
-§&nbsp;9.2, recompute the signed bytes, and verify <code>sig</code> per BIP-340. Signature
-verification composes with — never replaces — chain verification
-(<a href="#verification">§&nbsp;8.2</a>).</p>
+<p>An auditor verifying a level-1 entry <span class="rfc">must</span> check, in addition to the
+chain (§&nbsp;8.2): the embedded event's <code>kind</code> matches the entry type;
+<code>content</code> equals the canonical intent <em>derived from the entry's params</em> (so a
+node that alters an entry's params breaks the match); the event <code>pubkey</code> equals the
+actor's key (from the DID, or the profile document for custodial accounts); the NIP-01
+<code>id</code> recomputes; and the BIP-340 signature verifies. Freshness is <em>not</em>
+rechecked — it was enforced at apply time, and history ages. <code>GET /api/log/verify</code>
+performs this audit and reports <code>signatures: {signed, unsigned, invalid}</code>; a level-1 log
+is valid only when <code>invalid = 0</code>.</p>
 <div class="issue"><span class="lbl">Open issues (level 1)</span>
-<p>Key rotation and revocation for node-local agents; multi-key agents; whether
-<code>settle</code> should optionally carry the <em>debtor's</em> counter-signature as a receipt.
-Tracked on GitHub.</p></div>
+<p>Key rotation/revocation and custody export (a password agent claiming their custodial key as
+their own did:nostr); multi-key agents; whether <code>settle</code> should carry the
+<em>debtor's</em> counter-signature as a receipt. Tracked on GitHub.</p></div>
 
 <h2 id="http"><span class="secno">10.</span>HTTP API<a class="self" href="#http">§</a></h2>
 <p>A node exposing HTTP <span class="rfc">must</span> implement the following resources. Writes
@@ -457,6 +500,8 @@ remain level&nbsp;1 (<a href="#signatures">§&nbsp;9</a>).</li>
 <td>200 <code>{agent, positions[], net{}}</code></td></tr>
 <tr><td><code>GET /api/path</code></td><td><code>?from&amp;to&amp;currency&amp;amount</code></td>
 <td>200 <code>{path[], hops}</code>; 404 no route</td></tr>
+<tr><td><code>POST /api/tx</code></td><td>a signed transition event (§&nbsp;9.2)</td>
+<td>as the matching lane below; 401 bad event, 409 replay, 400 non-canonical intent</td></tr>
 <tr><td><code>POST /api/trustlines</code></td><td><code>{peer, currency, limit}</code></td>
 <td>201 created / 200 updated</td></tr>
 <tr><td><code>POST /api/trustlines/remove</code></td><td><code>{peer, currency}</code></td>
@@ -553,6 +598,18 @@ hash₃ = sha256:cf5289f9be4010c23ce11838819dab7fa287259d94530183aa77bd1de23786c
 <code>capacity(A→B) = 700</code>; <code>capacity(B→C) = 200</code>; a further payment
 <code>A→C</code> of 900 finds no route and changes nothing.</p>
 
+<h3 id="v-signed">A.4 A signed transition event</h3>
+<p>Key <code>0x…03</code> (the integer 3 as a 32-byte scalar), <code>created_at</code> 1785312000,
+BIP-340 auxiliary randomness all-zero (deterministic form — production signers use random aux;
+verification is identical):</p>
+<pre style="white-space:pre-wrap;word-break:break-all"><code>{ "pubkey": "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+  "created_at": 1785312000, "kind": 8803, "tags": [],
+  "content": "{\"amount\":300,\"currency\":\"USD\",\"to\":\"https://n.example/u/carol#me\"}",
+  "id": "0501ad5807e019a8609dbf18120956e4af64f2b5e9186c7033eb7cda7b49e88a",
+  "sig": "b0766e770dd4627c00342255a809aba6f33a8ebc8e8b434fab2305b8dd229ab25e52063cccf1274ce9b99c6e52d6bf4c543ce69cb55d13dc7ba93ac55060c12f" }</code></pre>
+<p>An implementation <span class="rfc">must</span> reproduce <code>id</code> exactly, and with the
+all-zero aux the signature as well.</p>
+
 <h2 id="references"><span class="secno">B.</span>References<a class="self" href="#references">§</a></h2>
 <h3>B.1 Normative</h3>
 <ul>
@@ -563,7 +620,7 @@ Uppercase vs Lowercase in RFC 2119 Key Words</a></li>
 <li id="ref-rfc8785">[RFC8785] — <a href="https://www.rfc-editor.org/rfc/rfc8785">JSON
 Canonicalization Scheme (JCS)</a></li>
 <li id="ref-bip340">[BIP340] — <a href="https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki">Schnorr
-Signatures for secp256k1</a> <em>(level 1)</em></li>
+Signatures for secp256k1</a></li>
 <li id="ref-did">[DID-CORE] — <a href="https://www.w3.org/TR/did-core/">Decentralized Identifiers
 (DIDs) v1.0</a></li>
 </ul>

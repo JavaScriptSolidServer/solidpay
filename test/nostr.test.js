@@ -14,6 +14,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createNode } from '../server.js';
 import { buildNip98, verifyNip98, eventId } from '../lib/nip98.js';
+import { buildTxEvent } from '../lib/tx.js';
 
 // A fixed test key (never reuse outside tests).
 const PRIV = '0000000000000000000000000000000000000000000000000000000000000001';
@@ -59,11 +60,10 @@ describe('nostr auth (NIP-98)', () => {
   });
 
   it('a nostr agent extends trust; a password agent pays it — one graph', async () => {
-    // did:nostr extends dave 100 USD of credit (creditor = the signer).
-    const tl = await nostrFetch(PRIV, '/api/trustlines', {
-      method: 'POST',
-      body: JSON.stringify({ peer: DAVE, currency: 'USD', limit: 100 }),
-    });
+    // did:nostr extends dave 100 USD of credit — via the SIGNED lane
+    // (level 1: did:* writes are signed transitions on /api/tx).
+    const ev = buildTxEvent(PRIV, 'set-trustline', { peer: DAVE, currency: 'USD', limit: 100 });
+    const tl = await fetch(`${base}/api/tx`, { method: 'POST', headers: jsonHeaders, body: JSON.stringify(ev) });
     assert.strictEqual(tl.status, 201, await tl.clone().text());
     assert.strictEqual((await tl.json()).trustline.creditor, NOSTR);
     // dave (bearer auth) pays the nostr agent 40 across that line.
@@ -80,11 +80,9 @@ describe('nostr auth (NIP-98)', () => {
     assert.ok(log.entries.some((e) => e.actor === NOSTR && e.type === 'create-trustline'));
   });
 
-  it('the nostr agent settles its own claim (signed write with body)', async () => {
-    const res = await nostrFetch(PRIV, '/api/settle', {
-      method: 'POST',
-      body: JSON.stringify({ peer: DAVE, currency: 'USD', amount: 15 }),
-    });
+  it('the nostr agent settles its own claim (signed transition)', async () => {
+    const ev = buildTxEvent(PRIV, 'settle', { peer: DAVE, currency: 'USD', amount: 15 });
+    const res = await fetch(`${base}/api/tx`, { method: 'POST', headers: jsonHeaders, body: JSON.stringify(ev) });
     assert.strictEqual(res.status, 200, await res.clone().text());
     assert.strictEqual((await res.json()).settled.remaining, 25);
   });
@@ -117,7 +115,8 @@ describe('nostr auth (NIP-98)', () => {
     // Body swapped after signing (payload tag mismatch).
     assert.strictEqual((await post(buildNip98(PRIV, url, 'POST', '{"peer":"x"}'))).status, 401, 'payload mismatch');
 
-    // A (valid) bodyless header replayed onto a body-carrying write.
+    // A (valid) bodyless header replayed onto a body-carrying write —
+    // refused as unauthenticated (401), never reaching the did:* lane check.
     const noPayload = buildNip98(PRIV, url, 'POST', null);
     assert.strictEqual((await post(noPayload)).status, 401, 'missing payload tag on a write');
   });

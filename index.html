@@ -184,10 +184,10 @@ footer a{color:var(--soft)}
       RFC 8785-canonical entry. Anyone can re-derive the whole chain from
       <code>/api/log</code>; the UI shows the verification badge live.</p></div>
     <div class="card"><h3><span class="ic">✎</span>Signatures, not sessions</h3>
-      <p><strong>Live now:</strong> sign in with your nostr key — every request is NIP-98-signed and
-      your agent is <code>did:nostr:&lt;pubkey&gt;</code>, no registration. <strong>Next (v1):</strong>
-      the transitions themselves schnorr-signed over the same canonical bytes — the server drops from
-      authority to coordinator. A signed transition is shaped like a nostr event, on purpose.</p></div>
+      <p><strong>Live:</strong> every transition is a schnorr-signed nostr event — sign with any
+      nostr key (extension or xlogin), <code>POST /api/tx</code>, done. The node verifies, never
+      attributes: authorship is provable by anyone replaying the log. The server is a coordinator,
+      not an authority — verify, don't trust.</p></div>
     <div class="card"><h3><span class="ic">⇄</span>A network of nodes <small style="color:var(--warn);font-weight:600">v2</small></h3>
       <p>Signed transitions make federation possible: routes that cross nodes, relayed and verified
       anywhere — the part that was genuinely hard in 2004. Chain tips can anchor to Bitcoin via
@@ -226,8 +226,10 @@ PUBLIC_URL=https://testnet.solidpay.org node server.js</pre></div>
   <ul class="road">
     <li><span class="v">v0</span><div><b>Standalone testnet node<span class="now">now</span></b>
       <p>Trustlines, routed payments, settle, hash-chained ledger, product UI, URIs for users, nostr sign-in. <a href="http://melvin.me:3480/">Live testnet</a> — play money, real protocol.</p></div></li>
-    <li><span class="v">v1</span><div><b>did:nostr signatures</b>
-      <p>Schnorr-signed transitions — the ledger becomes verify-don't-trust. Nostr <em>sign-in</em> already shipped in v0; drafted in <a href="docs/spec/#signatures">spec §9</a>.</p></div></li>
+    <li><span class="v">v1</span><div><b>did:nostr signatures<span class="now">live</span></b>
+      <p>Shipped: schnorr-signed transitions as nostr events (kinds 8801–8804) — the ledger is
+      verify-don't-trust, and <a href="docs/spec/#signatures">spec §9</a> is normative. Remaining in
+      v1: per-agent privacy views, WebID agents, custody export.</p></div></li>
     <li><span class="v">v2</span><div><b>Federation</b>
       <p>Cross-node routing over signed transitions — hold/commit or relay gossip. Multiple testnets, then peering.</p></div></li>
     <li><span class="v">v3</span><div><b>Anchoring &amp; beyond</b>
