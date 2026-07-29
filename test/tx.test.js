@@ -149,15 +149,46 @@ describe('signed transitions (level 1)', () => {
     assert.strictEqual(verifyEntryEvent(forged, keyOf).valid, false, 'forged params no longer match the signed intent');
   });
 
-  it('deterministic vector: fixed key, time, and aux → stable event id', () => {
+  it('spec Appendix A.4 vector: byte-exact id and sig', () => {
     const ev = buildTxEvent(PRIV, 'send-payment',
       { to: 'https://n.example/u/carol#me', currency: 'USD', amount: 300 },
       { created_at: 1785312000, auxRand: '00'.repeat(32) });
-    const again = buildTxEvent(PRIV, 'send-payment',
-      { to: 'https://n.example/u/carol#me', currency: 'USD', amount: 300 },
-      { created_at: 1785312000, auxRand: '00'.repeat(32) });
-    assert.strictEqual(ev.id, again.id);
-    assert.strictEqual(ev.sig, again.sig, 'BIP-340 with fixed aux is deterministic');
+    assert.strictEqual(ev.pubkey, 'f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9');
+    assert.strictEqual(ev.content, '{"amount":300,"currency":"USD","to":"https://n.example/u/carol#me"}');
+    assert.strictEqual(ev.id, '0501ad5807e019a8609dbf18120956e4af64f2b5e9186c7033eb7cda7b49e88a');
+    assert.strictEqual(ev.sig, 'b0766e770dd4627c00342255a809aba6f33a8ebc8e8b434fab2305b8dd229ab25e52063cccf1274ce9b99c6e52d6bf4c543ce69cb55d13dc7ba93ac55060c12f');
     assert.strictEqual(ev.kind, KINDS['send-payment']);
+  });
+
+  it('a custodial key submitted via /api/tx maps back to the ACCOUNT agent', async () => {
+    // One agent, one spelling: the node's custodial key must never mint a
+    // second did:nostr identity for an existing account.
+    const daveKeys = JSON.parse(fs.readFileSync(path.join(dataDir, 'keys.json'), 'utf8'));
+    const ev = buildTxEvent(daveKeys.dave, 'set-trustline', { peer: NOSTR, currency: 'HRS', limit: 3 });
+    const res = await postTx(ev);
+    assert.strictEqual(res.status, 201, await res.clone().text());
+    assert.strictEqual((await res.json()).trustline.creditor, DAVE, 'actor is the account URI, not a new DID');
+  });
+
+  it('the audit catches a double-applied signed intent (duplicate event id)', async () => {
+    // Simulate a malicious node: append the same event twice by editing
+    // state on disk, then ask the audit.
+    const stateFile = path.join(dataDir, 'state.json');
+    const st = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+    const signedEntry = st.log.find((e) => e.event);
+    const { entryHash } = await import('../lib/engine.js');
+    const dup = { ...signedEntry, seq: st.seq + 1, prev: st.tip, ts: new Date().toISOString() };
+    dup.hash = entryHash(dup);
+    st.log.push(dup); st.seq = dup.seq; st.tip = dup.hash;
+    fs.writeFileSync(stateFile, JSON.stringify(st));
+    // A fresh node over the tampered state: chain verifies (the node hashed
+    // its own tampering), but the AUTHORSHIP audit refuses the duplicate.
+    const node2 = createNode({ dataDir });
+    const { port } = await node2.listen(0, '127.0.0.1');
+    const v = await (await fetch(`http://127.0.0.1:${port}/api/log/verify`)).json();
+    await node2.close();
+    assert.strictEqual(v.signatures.invalid >= 1, true, 'duplicate id flagged');
+    assert.strictEqual(v.valid, false, 'a double-applied intent fails the audit');
+    assert.ok((v.problems || []).some((p) => /duplicate event id/.test(p.error)));
   });
 });

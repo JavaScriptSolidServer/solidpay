@@ -8,14 +8,16 @@
 // `<origin>/u/alice#me`, and GET /u/alice dereferences to a small profile
 // document — identity you can point at, Solid-style. Passwords are scrypt-
 // hashed on disk; sessions are stateless HMAC bearer tokens (the capability
-// pattern). v1 adds did:nostr sign-in: a schnorr signature over the
-// transition replaces the account entirely (docs/spec.md §7).
+// pattern). Level 1: transitions are signed nostr events (POST /api/tx —
+// the signature is the authentication; docs/spec/ § 9); node-local accounts
+// are custodially signed so the whole log audits uniformly.
 //
 //   POST /api/register {username,password}   → {agent, token}
 //   POST /api/login    {username,password}   → {agent, token}
 //   GET  /api/whoami                          → {agent}
 //   GET  /u/:name                             the agent's profile document
 //   GET  /api/graph | /api/balances?agent= | /api/path?from&to&currency&amount
+//   POST /api/tx                              a signed transition event (§ 9)
 //   POST /api/trustlines | /api/trustlines/remove | /api/payments | /api/settle
 //   GET  /api/log?limit= | /api/log/verify
 //   GET  /                                    the app UI
@@ -177,6 +179,26 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
     return null;
   };
 
+  // ---- tx throttle + custodial pubkey map --------------------------------
+  const txHits = new Map();
+  function txAllowed(req) {
+    const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '?')
+      .split(',')[0].trim();
+    const now = Date.now();
+    const hits = (txHits.get(ip) || []).filter((t) => now - t < 3600_000);
+    if (hits.length >= 120) return false;
+    hits.push(now);
+    txHits.set(ip, hits);
+    if (txHits.size > 10_000) txHits.clear();
+    return true;
+  }
+  function nameForPubkey(pub) {
+    for (const name of Object.keys(custodialKeys)) {
+      if (custodialPub(name) === pub) return name;
+    }
+    return null;
+  }
+
   // ---- register throttle -------------------------------------------------
   const regHits = new Map(); // ip → [timestamps]
   function registerAllowed(req) {
@@ -302,11 +324,17 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
         // every entry's embedded event must verify against the actor's key.
         const signatures = { signed: 0, unsigned: 0, invalid: 0 };
         const problems = [];
+        const ids = new Set();
         for (const e of ledger.state.log) {
           const v = verifyEntryEvent(e, keyOfActor);
           if (!v.signed) signatures.unsigned += 1;
-          else if (v.valid) signatures.signed += 1;
-          else { signatures.invalid += 1; problems.push({ seq: e.seq, error: v.error }); }
+          else if (!v.valid) { signatures.invalid += 1; problems.push({ seq: e.seq, error: v.error }); }
+          else if (ids.has(e.event.id)) {
+            // A node that double-applies one signed intent forges value —
+            // the audit, not the freshness window, is what catches history.
+            signatures.invalid += 1;
+            problems.push({ seq: e.seq, error: 'duplicate event id (double-applied intent)' });
+          } else { signatures.signed += 1; ids.add(e.event.id); }
         }
         return send(res, 200, {
           ...chain,
@@ -323,14 +351,20 @@ export function createNode({ dataDir = './data', publicUrl = null } = {}) {
       if (req.method === 'POST' && p === '/api/tx') {
         const { json: ev } = await readBody(req);
         if (!ev) return send(res, 400, { error: 'invalid JSON body' });
+        if (!txAllowed(req)) return send(res, 429, { error: 'too many transitions from your address — slow down' });
         const v = verifyTxEvent(ev);
         if (v.error) return send(res, 401, { error: `invalid transition event: ${v.error}` });
+        // One agent, one spelling: an event signed by a CUSTODIAL key is the
+        // account acting, not a new did:nostr identity — map it back, or the
+        // same key would exist as two agents and split the graph.
+        const custodialName = nameForPubkey(ev.pubkey);
+        const actor = custodialName ? agentUri(custodialName) : v.actor;
         // Signatures cover exact bytes, so the node validates canonical form
         // rather than rewriting: agent URIs canonical, currency uppercase.
         const canonErr = intentCanonError(v.type, v.intent);
         if (canonErr) return send(res, 400, { error: canonErr });
         if (seenEvents.has(ev.id)) return send(res, 409, { error: 'event already applied (replay)' });
-        const out = applySigned(v.actor, v.type, v.intent, ev);
+        const out = applySigned(actor, v.type, v.intent, ev);
         seenEvents.set(ev.id, ev.created_at);
         pruneSeen();
         return send(res, out.created === true ? 201 : 200, out);
